@@ -1,0 +1,75 @@
+services:
+  db:
+    image: postgres:18-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PGDATABASE:-heimweg}
+      POSTGRES_USER: ${PGUSER:-heimweg}
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      APP_ORIGIN: ${APP_ORIGIN:?Set APP_ORIGIN in .env}
+      PORT: 3000
+      PGHOST: ${PGHOST:-db}
+      PGPORT: ${PGPORT:-5432}
+      PGDATABASE: ${PGDATABASE:-heimweg}
+      PGUSER: ${PGUSER:-heimweg}
+      PGSSL: ${PGSSL:-false}
+      PGPASSWORD_FILE: /run/secrets/db_password
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+      SETUP_TOKEN_FILE: /run/secrets/setup_token
+      BACKUP_KEY_FILE: /run/secrets/backup_key
+      PROVIDER_MODE: ${PROVIDER_MODE:-disabled}
+      OSRM_URL: ${OSRM_URL:-}
+      NOMINATIM_URL: ${NOMINATIM_URL:-}
+      ALLOW_EXTERNAL_LOCATION_DATA: ${ALLOW_EXTERNAL_LOCATION_DATA:-false}
+      TRUSTED_PROXY_IP: ${TRUSTED_PROXY_IP:-}
+    ports:
+      - '127.0.0.1:${APP_PORT:-3000}:3000'
+    secrets:
+      - db_password
+      - encryption_key
+      - setup_token
+      - backup_key
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+      - outbound
+networks:
+  backend:
+    internal: true
+  outbound:
+volumes:
+  postgres_data:
+secrets:
+  db_password:
+    file: ./secrets/db_password
+  encryption_key:
+    file: ./secrets/encryption_key
+  setup_token:
+    file: ./secrets/setup_token
+  backup_key:
+    file: ./secrets/backup_key

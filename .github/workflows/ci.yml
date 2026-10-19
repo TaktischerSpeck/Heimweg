@@ -1,0 +1,51 @@
+name: Quality and security
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-bookworm
+        env:
+          POSTGRES_USER: heimweg
+          POSTGRES_PASSWORD: ci-only-not-for-production
+          POSTGRES_DB: heimweg_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U heimweg -d heimweg_test"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+        env:
+          TEST_DATABASE_URL: postgres://heimweg:ci-only-not-for-production@localhost:5432/heimweg_test
+      - run: node test/ci-postgres-restore.js
+        env:
+          TEST_DATABASE_URL: postgres://heimweg:ci-only-not-for-production@localhost:5432/heimweg_test
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+      - run: npm audit --audit-level=high
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - run: docker build -t heimweg:ci .
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: heimweg:ci
+          format: table
+          exit-code: '1'
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          scanners: vuln
