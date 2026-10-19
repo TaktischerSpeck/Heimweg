@@ -55,6 +55,31 @@ test('vehicle seats, unique names and updates', async (t) => {
   );
   assert.equal((await f.request(`/api/vehicles/${vehicle.id}`, 'DELETE')).status, 200);
 });
+test('internal provider errors never expose personal data or secrets in logs and responses', async (t) => {
+  const sensitive = 'Synthetic Child at Secret Test Street, password=synthetic-only';
+  const f = await fixture({
+    geocode: async () => {
+      throw new Error(sensitive);
+    },
+  });
+  t.after(f.close);
+  await f.setup();
+  await f.login();
+  const logs = [];
+  const original = console.error;
+  console.error = (...values) => logs.push(values.join(' '));
+  let response;
+  try {
+    response = await f.request('/api/geocode', 'POST', { address: sensitive });
+  } finally {
+    console.error = original;
+  }
+  assert.equal(response.status, 500);
+  assert.equal(logs.length, 1);
+  assert.match(logs[0], /request_failed/);
+  assert.ok(!logs[0].includes(sensitive));
+  assert.ok(!JSON.stringify(response.data).includes(sensitive));
+});
 test('planning endpoint uses only selected IDs, rejects capacity and revision errors, stores no history', async (t) => {
   let count = 0;
   const f = await fixture({
