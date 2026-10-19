@@ -6,6 +6,10 @@ RUN npm ci --omit=dev --no-fund && npm cache clean --force
 FROM node:24-bookworm-slim
 ENV NODE_ENV=production
 WORKDIR /app
+# Apply distribution security fixes and omit build-time package managers from the runtime image.
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+    && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY --chown=node:node package.json package-lock.json ./
 COPY --chown=node:node src ./src
