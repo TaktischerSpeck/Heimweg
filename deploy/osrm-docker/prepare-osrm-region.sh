@@ -21,5 +21,6 @@ for operation in extract partition customize; do
   fi
 done
 rm "$task_dir/region.osm.pbf"
+chmod -R a+rX "$task_dir"
 mv "$task_dir" osrm-regional-data
 echo 'Regional OSRM data built. Start with compose.yaml and compose.osrm.regional.yaml.'

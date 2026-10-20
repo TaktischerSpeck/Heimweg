@@ -5,6 +5,7 @@ for tool in osmium curl python3; do command -v "$tool" >/dev/null; done
 python3 -c 'import shapely, pyproj'
 buffer_metres=${REGION_BUFFER_METRES:-5000}
 mkdir -p geocoding-data
+chmod 755 geocoding-data
 if [ -e geocoding-data/region.osm.pbf ]; then
   echo 'Regional extract already exists; move it aside before preparing a new version.' >&2
   exit 1
