@@ -3,10 +3,11 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { setup, login, session, rateLimit } from './auth.js';
 import { cipher, digest, equal, hashPassword, token } from './security.js';
-import { transaction } from './db.js';
+import { transaction, setting, bumpRevision } from './db.js';
 import { HttpError, ensure, integer, location, string, uuid } from './validation.js';
 import { geocode, roadMatrix } from './providers.js';
 import { runOptimizer } from './planning.js';
+import { exportCsv, previewImport } from './csv.js';
 
 const assets = {
   '/': ['index.html', 'text/html; charset=utf-8'],
@@ -24,7 +25,11 @@ async function bodyOf(request) {
   const chunks = [];
   for await (const chunk of request) {
     length += chunk.length;
-    ensure(length <= 32768, 'Die Anfrage ist zu groß.', 413);
+    ensure(
+      length <= (request.url?.startsWith('/api/csv/') ? 2 * 1024 * 1024 : 32768),
+      'Die Anfrage ist zu groß.',
+      413,
+    );
     chunks.push(chunk);
   }
   try {
@@ -38,16 +43,11 @@ async function bodyOf(request) {
 export async function createApp(pool, config, dependencies = {}) {
   const crypt = cipher(config.encryptionKey);
   const dummyHash = await hashPassword(token());
-  await pool.query(
-    "INSERT INTO settings(key, value) VALUES ('encryption_check', $1) ON CONFLICT (key) DO NOTHING",
-    [crypt.encrypt('heimweg', 'encryption_check')],
-  );
+  await setting(pool, 'encryption_check', crypt.encrypt('heimweg', 'encryption_check'));
   const check = await pool.query("SELECT value FROM settings WHERE key = 'encryption_check'");
   if (crypt.decrypt(check.rows[0].value, 'encryption_check') !== 'heimweg')
     throw new Error('Encryption key verification failed.');
-  await pool.query(
-    "INSERT INTO settings(key, value) VALUES ('revision', '0') ON CONFLICT (key) DO NOTHING",
-  );
+  await setting(pool, 'revision', '0');
   const providers = { geocode, roadMatrix, optimize: runOptimizer, ...dependencies };
   let calculating = false;
 
@@ -59,7 +59,8 @@ export async function createApp(pool, config, dependencies = {}) {
     const children = (await client.query('SELECT * FROM children')).rows
       .map((row) => ({ id: row.id, ...crypt.decrypt(row.encrypted_data, `child:${row.id}`) }))
       .sort((a, b) => a.name.localeCompare(b.name, 'de') || a.id.localeCompare(b.id));
-    const vehicles = (await client.query('SELECT * FROM vehicles ORDER BY name, id')).rows;
+    const vehicles = (await client.query('SELECT id, name, seats FROM vehicles ORDER BY name, id'))
+      .rows;
     return {
       station: station ? crypt.decrypt(station.value, 'station') : null,
       children,
@@ -69,10 +70,9 @@ export async function createApp(pool, config, dependencies = {}) {
   }
   async function mutate(callback) {
     return transaction(pool, async (client) => {
+      await client.query("SELECT value FROM settings WHERE key = 'revision' FOR UPDATE");
       const result = await callback(client);
-      await client.query(
-        "UPDATE settings SET value = (value::bigint + 1)::text WHERE key = 'revision'",
-      );
+      await bumpRevision(client);
       return result;
     });
   }
@@ -154,10 +154,13 @@ export async function createApp(pool, config, dependencies = {}) {
         return json(200, { ok: true });
       }
       if (method === 'GET' && pathname === '/api/data') {
-        const snapshot = await transaction(pool, async (client) => {
-          await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
-          return data(client);
-        });
+        const snapshot = await transaction(
+          pool,
+          async (client) => {
+            return data(client);
+          },
+          true,
+        );
         return json(200, {
           ...snapshot,
           providers: {
@@ -174,13 +177,65 @@ export async function createApp(pool, config, dependencies = {}) {
           candidates: await providers.geocode(config, string(body.address, 'Adresse', 5, 500)),
         });
       }
+      const csvMatch = pathname.match(/^\/api\/csv\/(children|vehicles)\/(export|preview|import)$/);
+      if (csvMatch) {
+        const [, type, operation] = csvMatch;
+        if (operation === 'export' && method === 'POST') {
+          const snapshot = await transaction(pool, (client) => data(client), true);
+          response.writeHead(200, {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': `attachment; filename="heimweg-${type}.csv"`,
+          });
+          return response.end(exportCsv(type, snapshot[type]));
+        }
+        ensure(method === 'POST' && operation !== 'export', 'Nicht gefunden.', 404);
+        await rateLimit(pool, `csv:${userSession.user_id}`, 20, 60);
+        const body = await bodyOf(request);
+        if (operation === 'preview') {
+          const snapshot = await transaction(pool, (client) => data(client), true);
+          return json(200, {
+            ...previewImport(body.csv, type, snapshot[type]),
+            revision: snapshot.revision,
+          });
+        }
+        ensure(body.confirmed === true, 'Bitte die Importvorschau ausdrücklich bestätigen.');
+        const imported = await mutate(async (client) => {
+          const snapshot = await data(client);
+          ensure(
+            body.revision === snapshot.revision,
+            'Die Stammdaten wurden geändert. Bitte die Vorschau neu laden.',
+            409,
+          );
+          if (type === 'children')
+            ensure(snapshot.station, 'Bitte zuerst den Feuerwehrstandort hinterlegen.');
+          const preview = previewImport(body.csv, type, snapshot[type]);
+          ensure(preview.valid, 'Der Import enthält Fehler. Bitte die Vorschau prüfen.');
+          for (const row of preview.rows) {
+            const { id, ...entry } = row.data;
+            if (type === 'children') {
+              const encrypted = crypt.encrypt(entry, `child:${id}`);
+              await client.query(
+                row.action === 'create'
+                  ? 'INSERT INTO children(id, encrypted_data) VALUES ($1, $2)'
+                  : 'UPDATE children SET encrypted_data = $2 WHERE id = $1',
+                [id, encrypted],
+              );
+            } else
+              await client.query(
+                row.action === 'create'
+                  ? 'INSERT INTO vehicles(id, name, seats) VALUES ($1, $2, $3)'
+                  : 'UPDATE vehicles SET name = $2, seats = $3 WHERE id = $1',
+                [id, entry.name, entry.seats],
+              );
+          }
+          return { creates: preview.creates, updates: preview.updates, pending: preview.pending };
+        });
+        return json(200, imported);
+      }
       if (method === 'PUT' && pathname === '/api/station') {
         const station = location(await bodyOf(request));
         await mutate((client) =>
-          client.query(
-            "INSERT INTO settings(key, value) VALUES ('station', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
-            [crypt.encrypt(station, 'station')],
-          ),
+          setting(client, 'station', crypt.encrypt(station, 'station'), true),
         );
         return json(200, { ok: true });
       }
@@ -283,10 +338,13 @@ export async function createApp(pool, config, dependencies = {}) {
         ensure(Number.isFinite(departure.getTime()), 'Ungültige Abfahrtszeit.');
         calculating = true;
         try {
-          const snapshot = await transaction(pool, async (client) => {
-            await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
-            return data(client);
-          });
+          const snapshot = await transaction(
+            pool,
+            async (client) => {
+              return data(client);
+            },
+            true,
+          );
           ensure(snapshot.station, 'Bitte zuerst den Feuerwehrstandort hinterlegen.');
           ensure(
             body.revision === snapshot.revision,
@@ -298,6 +356,15 @@ export async function createApp(pool, config, dependencies = {}) {
             children.length === body.children.length,
             'Ein ausgewähltes Kind ist nicht mehr vorhanden.',
             409,
+          );
+          ensure(
+            children.every(
+              (child) =>
+                child.confirmed === true &&
+                typeof child.lat === 'number' &&
+                typeof child.lon === 'number',
+            ),
+            'Mindestens eine Kinderadresse ist noch nicht geprüft. Bitte zuerst in der Kinderverwaltung bestätigen.',
           );
           const fleet = body.vehicles
             .map((selected) => {
@@ -350,10 +417,11 @@ export async function createApp(pool, config, dependencies = {}) {
       }
       throw new HttpError(404, 'Nicht gefunden.');
     } catch (error) {
-      const status = error.status || (error.code === '23505' ? 409 : 500);
+      const duplicate = ['23505', 'ER_DUP_ENTRY'].includes(error.code);
+      const status = error.status || (duplicate ? 409 : 500);
       const message = error.status
         ? error.message
-        : error.code === '23505'
+        : duplicate
           ? 'Diese Bezeichnung ist bereits vergeben.'
           : 'Die Anfrage konnte nicht verarbeitet werden. Bitte erneut versuchen.';
       if (status >= 500)

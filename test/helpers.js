@@ -1,10 +1,43 @@
 import { PGlite } from '@electric-sql/pglite';
 import pg from 'pg';
 import { randomBytes } from 'node:crypto';
-import { migrate } from '../src/db.js';
+import { createPool, migrate } from '../src/db.js';
 import { createApp } from '../src/app.js';
 
 export async function database() {
+  if (process.env.TEST_MARIADB_URL) {
+    const url = new URL(process.env.TEST_MARIADB_URL);
+    const pool = createPool({
+      databaseEngine: 'mariadb',
+      database: {
+        host: url.hostname,
+        port: Number(url.port || 3306),
+        user: decodeURIComponent(url.username),
+        password: decodeURIComponent(url.password),
+        database: url.pathname.slice(1),
+        ssl: false,
+      },
+    });
+    const client = await pool.connect();
+    try {
+      await client.query('SET FOREIGN_KEY_CHECKS=0');
+      for (const name of [
+        'sessions',
+        'users',
+        'children',
+        'vehicles',
+        'settings',
+        'rate_limits',
+        'schema_migrations',
+      ])
+        await client.query(`DROP TABLE IF EXISTS ${name}`);
+    } finally {
+      await client.query('SET FOREIGN_KEY_CHECKS=1');
+      client.release();
+    }
+    await migrate(pool);
+    return pool;
+  }
   if (process.env.TEST_DATABASE_URL) {
     const pool = new pg.Pool({ connectionString: process.env.TEST_DATABASE_URL });
     await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public');
@@ -73,7 +106,9 @@ export async function fixture(dependencies = {}) {
     });
     if (response.headers.get('set-cookie'))
       cookie = response.headers.get('set-cookie').split(';')[0];
-    const data = await response.json();
+    const data = response.headers.get('content-type')?.startsWith('text/csv')
+      ? await response.text()
+      : await response.json();
     if (data.csrfToken) csrf = data.csrfToken;
     return { status: response.status, data, headers: response.headers };
   }

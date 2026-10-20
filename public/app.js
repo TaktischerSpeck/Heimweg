@@ -14,6 +14,7 @@ let csrf = '',
   noticeTimer;
 let selectedChildren = new Set(),
   selectedVehicles = new Map();
+let csvImport = null;
 const options = { timeLimitSeconds: 10, dwellSeconds: 0, includeReturn: false, departure: '' };
 const esc = (value) =>
   String(value ?? '').replace(
@@ -52,6 +53,7 @@ function clearPrivate() {
   selectedVehicles.clear();
   search = '';
   stale = false;
+  csvImport = null;
   if (dialog.open) dialog.close();
   dialog.replaceChildren();
 }
@@ -66,7 +68,9 @@ async function api(path, method = 'GET', body) {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  const data = await response.json();
+  const data = response.headers.get('content-type')?.startsWith('text/csv')
+    ? await response.text()
+    : await response.json();
   if (response.status === 401 && path !== '/login') {
     clearPrivate();
     renderAuth(false);
@@ -140,6 +144,8 @@ function empty(title, text, tab, label) {
 function validation() {
   if (!snapshot.station) return 'Bitte zuerst den Feuerwehrstandort hinterlegen.';
   if (!selectedChildren.size) return 'Wähle die Kinder aus, die heute nach Hause gefahren werden.';
+  if (snapshot.children.some((child) => selectedChildren.has(child.id) && !child.confirmed))
+    return 'Mindestens eine ausgewählte Kinderadresse ist noch zu prüfen. Bitte die Kinderverwaltung öffnen.';
   if (!selectedVehicles.size) return 'Aktiviere mindestens ein verfügbares Fahrzeug.';
   if (selectedChildren.size > 40 || selectedVehicles.size > 8)
     return 'Pro Planung sind bis zu 40 Kinder und 8 Fahrzeuge möglich.';
@@ -203,10 +209,80 @@ function managePage() {
     return `<div class="page-head"><div><div class="eyebrow">Der gemeinsame Startpunkt</div><h1>Hier geht’s los.</h1><p>Alle Heimfahrten beginnen an eurem Feuerwehrstandort.</p></div></div><section class="panel station-panel"><h2>Feuerwehrstandort</h2>${snapshot.station ? `<p>${esc(snapshot.station.address)}</p><p class="small">Geprüfte Koordinaten: ${snapshot.station.lat}, ${snapshot.station.lon}</p>` : '<p>Noch kein Standort hinterlegt. Bitte Adresse suchen, Koordinaten prüfen und bestätigen.</p>'}<button class="primary" data-edit="station">${snapshot.station ? 'Standort bearbeiten' : 'Standort festlegen'}</button></section><div class="info-strip"><span class="symbol">⌁</span><span>Kartendienste: <b>${{ disabled: 'Noch nicht freigegeben', 'self-hosted': 'Eigener Betrieb', external: 'Externe Anbieter freigegeben' }[snapshot.providers.mode]}</b>. Straßenrouting ${snapshot.providers.routing ? 'konfiguriert' : 'fehlt'}, Adresssuche ${snapshot.providers.geocoding ? 'konfiguriert' : 'fehlt'}. Die Konfiguration erfolgt durch den Serveradministrator. ${snapshot.providers.mode === 'external' ? 'Adresssuche überträgt Adressen, Routing überträgt Koordinaten an die konfigurierten Anbieter.' : 'Alternativ können überprüfte Koordinaten manuell eingetragen werden.'}</span></div>`;
   const isChildren = currentTab === 'children',
     entries = isChildren ? snapshot.children : snapshot.vehicles;
-  return `<div class="page-head"><div><div class="eyebrow">${isChildren ? 'Einmal hinterlegen, immer bereit' : 'Platz für alle'}</div><h1>${isChildren ? 'Unsere Jugendfeuerwehr.' : 'Unser Fuhrpark.'}</h1><p>${isChildren ? 'Namen und geprüfte Heimfahradressen an einem Ort.' : 'Die Sitzplätze enthalten Fahrer und weitere Betreuer.'}</p></div><button class="primary" data-edit="${currentTab}">+ ${isChildren ? 'Kind' : 'Fahrzeug'} anlegen</button></div>${entries.length ? `<div class="manage-list">${entries.map((item) => `<article class="manage-row"><div><strong>${esc(item.name)}</strong><p>${isChildren ? esc(item.address) : `${item.seats} Sitzplätze insgesamt`}</p></div><div class="row-actions"><button data-edit="${currentTab}" data-id="${item.id}">Bearbeiten</button><button class="quiet danger" data-delete="${currentTab}" data-id="${item.id}">Löschen</button></div></article>`).join('')}</div>` : `<section class="panel">${empty(isChildren ? 'Noch keine Kinder angelegt.' : 'Noch keine Fahrzeuge angelegt.', isChildren ? 'Neue Kinder werden erst nach dem Anlegen für die Tagesplanung auswählbar.' : 'Hinterlege eure Fahrzeuge mit ihrer individuellen Sitzplatzanzahl.')}</section>`}`;
+  return `<div class="page-head"><div><div class="eyebrow">${isChildren ? 'Einmal hinterlegen, immer bereit' : 'Platz für alle'}</div><h1>${isChildren ? 'Unsere Jugendfeuerwehr.' : 'Unser Fuhrpark.'}</h1><p>${isChildren ? 'Namen und geprüfte Heimfahradressen an einem Ort.' : 'Die Sitzplätze enthalten Fahrer und weitere Betreuer.'}</p></div><button class="primary" data-edit="${currentTab}">+ ${isChildren ? 'Kind' : 'Fahrzeug'} anlegen</button></div><div class="csv-toolbar"><button data-csv="import" data-type="${currentTab}">CSV importieren</button><button data-csv="export" data-type="${currentTab}">CSV exportieren</button><button class="quiet" data-csv="template" data-type="${currentTab}">CSV-Vorlage</button></div>${entries.length ? `<div class="manage-list">${entries.map((item) => `<article class="manage-row"><div><strong>${esc(item.name)}</strong><p>${isChildren ? esc(item.address) + (!item.confirmed ? ' · Adresse noch prüfen' : '') : `${item.seats} Sitzplätze insgesamt`}</p></div><div class="row-actions"><button data-edit="${currentTab}" data-id="${item.id}">Bearbeiten</button><button class="quiet danger" data-delete="${currentTab}" data-id="${item.id}">Löschen</button></div></article>`).join('')}</div>` : `<section class="panel">${empty(isChildren ? 'Noch keine Kinder angelegt.' : 'Noch keine Fahrzeuge angelegt.', isChildren ? 'Neue Kinder werden erst nach dem Anlegen für die Tagesplanung auswählbar.' : 'Hinterlege eure Fahrzeuge mit ihrer individuellen Sitzplatzanzahl.')}</section>`}`;
 }
 function markStale() {
   if (result) stale = true;
+}
+function downloadCsv(content, filename) {
+  const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+async function handleCsv(button) {
+  const type = button.dataset.type || csvImport?.type;
+  if (button.dataset.csv === 'export') {
+    const content = await api(`/csv/${type}/export`, 'POST', {});
+    downloadCsv(content, `heimweg-${type}.csv`);
+    return;
+  }
+  if (button.dataset.csv === 'template') {
+    downloadCsv(
+      '\uFEFF' +
+        (type === 'children' ? 'id;name;address;lat;lon;confirmed\r\n' : 'id;name;seats\r\n'),
+      `heimweg-${type}-vorlage.csv`,
+    );
+    return;
+  }
+  if (button.dataset.csv === 'import') {
+    csvImport = { type, csv: '', preview: null };
+    dialog.innerHTML = `<form id="csv-form"><div class="dialog-head"><h2>${type === 'children' ? 'Kinder' : 'Fahrzeuge'} importieren</h2><button type="button" class="quiet" data-action="close-dialog" aria-label="Schließen">×</button></div><p class="form-help">UTF-8, Semikolon oder Komma, maximal 500 Datensätze / 1 MiB. Vorhandene Datensätze werden über die ID aktualisiert. Ohne ID werden passende Namen${type === 'children' ? ' und Adressen' : ''} erkannt. Andere Datensätze bleiben erhalten.</p>${type === 'children' ? '<p class="form-help">Kinder ohne bestätigte Koordinaten werden angelegt und bleiben bis zur Adressprüfung für die Routenberechnung gesperrt.</p>' : ''}<label class="field">CSV-Datei<input type="file" id="csv-file" accept=".csv,text/csv" required></label><button type="button" data-csv="preview">Vorschau laden</button><div id="csv-preview"></div><p id="csv-error" class="form-error" role="alert"></p><div class="dialog-actions"><button type="button" data-action="close-dialog">Abbrechen</button><button type="button" class="primary" data-csv="apply" disabled>Import bestätigen</button></div></form>`;
+    dialog.showModal();
+    return;
+  }
+  if (button.dataset.csv === 'preview') {
+    const file = dialog.querySelector('#csv-file').files[0];
+    if (!file) throw new Error('Bitte eine CSV-Datei auswählen.');
+    if (file.size > 1024 * 1024) throw new Error('Die CSV-Datei darf höchstens 1 MiB groß sein.');
+    button.disabled = true;
+    try {
+      csvImport.csv = await file.text();
+      const preview = await api(`/csv/${type}/preview`, 'POST', { csv: csvImport.csv });
+      csvImport.preview = preview;
+      dialog.querySelector('#csv-error').textContent = '';
+      dialog.querySelector('#csv-preview').innerHTML =
+        `<p class="small">${preview.creates} neu · ${preview.updates} Änderungen${preview.pending ? ` · ${preview.pending} Adressen noch zu prüfen` : ''}</p><div class="table-wrap csv-table"><table class="comparison"><thead><tr><th>Datensatz</th><th>Name</th><th>Ergebnis</th></tr></thead><tbody>${preview.rows.map((row) => `<tr><td>${row.line}</td><td>${esc(row.data?.name || '—')}</td><td>${row.error ? esc(row.error) : row.action === 'create' ? 'Neu anlegen' : 'Aktualisieren'}</td></tr>`).join('')}</tbody></table></div>${preview.valid ? '<label class="check-label"><input id="csv-confirm" type="checkbox">Ich habe die Vorschau geprüft und bestätige die Änderungen. Als geprüft markierte Kinderadressen und Koordinaten sind korrekt.</label>' : '<p class="form-error">Bitte alle Fehler in der Datei beheben und die Vorschau erneut laden. Es wurde nichts gespeichert.</p>'}`;
+      dialog.querySelector('[data-csv=apply]').disabled = !preview.valid;
+    } finally {
+      button.disabled = false;
+    }
+    return;
+  }
+  if (button.dataset.csv === 'apply') {
+    if (!csvImport.preview?.valid || !dialog.querySelector('#csv-confirm')?.checked)
+      throw new Error('Bitte zuerst die Vorschau prüfen und bestätigen.');
+    button.disabled = true;
+    try {
+      const imported = await api(`/csv/${type}/import`, 'POST', {
+        csv: csvImport.csv,
+        revision: csvImport.preview.revision,
+        confirmed: true,
+      });
+      csvImport = null;
+      result = null;
+      dialog.close();
+      dialog.replaceChildren();
+      await reload();
+      toast(
+        `${imported.creates} neu angelegt, ${imported.updates} aktualisiert.${imported.pending ? ` ${imported.pending} Adressen bitte noch prüfen.` : ''}`,
+      );
+    } finally {
+      button.disabled = false;
+    }
+  }
 }
 function updatePlanCounters() {
   const capacity = totalCapacity(),
@@ -270,6 +346,7 @@ root.addEventListener('submit', async (event) => {
 });
 dialog.addEventListener('submit', async (event) => {
   event.preventDefault();
+  if (event.target.id === 'csv-form') return;
   const form = event.target,
     type = form.dataset.type,
     id = form.dataset.id,
@@ -309,6 +386,10 @@ document.addEventListener('click', async (event) => {
   const button = event.target.closest('button');
   if (!button || button.disabled || busy) return;
   try {
+    if (button.dataset.csv) {
+      await handleCsv(button);
+      return;
+    }
     if (button.dataset.tab) {
       currentTab = button.dataset.tab;
       render();
@@ -351,6 +432,7 @@ document.addEventListener('click', async (event) => {
         await initialize();
         break;
       case 'close-dialog':
+        csvImport = null;
         dialog.close();
         dialog.replaceChildren();
         break;
@@ -450,8 +532,17 @@ root.addEventListener('change', (event) => {
   }
 });
 dialog.addEventListener('input', (event) => {
+  if (event.target.id === 'csv-file') {
+    csvImport.preview = null;
+    dialog.querySelector('#csv-preview').replaceChildren();
+    dialog.querySelector('[data-csv=apply]').disabled = true;
+  }
   if (['address', 'lat', 'lon'].includes(event.target.name))
     dialog.querySelector('[name=confirmed]').checked = false;
+});
+dialog.addEventListener('close', () => {
+  csvImport = null;
+  dialog.replaceChildren();
 });
 window.addEventListener('pagehide', () => {
   clearPrivate();

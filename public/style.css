@@ -17,6 +17,19 @@
   --green: #234f40;
   --white: #fff;
 }
+.csv-toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+.csv-table {
+  max-height: 260px;
+  margin: 15px 0;
+}
+.csv-toolbar button {
+  font-size: 12px;
+}
 * {
   box-sizing: border-box;
 }

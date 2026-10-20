@@ -1,6 +1,6 @@
 # Umsetzung der User Stories
 
-Die Originalanforderungen liegen unverändert in [anforderungen.md](anforderungen.md). Das fachliche Standardziel „letztes Kind möglichst früh zu Hause“ wurde übernommen. PostgreSQL ist die einzige produktiv unterstützte Datenbank.
+Die Originalanforderungen liegen unverändert in [anforderungen.md](anforderungen.md). Das fachliche Standardziel „letztes Kind möglichst früh zu Hause“ wurde übernommen. Unterstützt werden PostgreSQL 18 und MariaDB 10.11/11.4. Die Erweiterung ergänzt externe DB-Zugänge, CSV-Transfers, natives Node-/Plesk-Deployment und einen optionalen OpenRouteService-Adapter.
 
 | Story | Umsetzung und Prüfung |
 | --- | --- |
@@ -29,7 +29,7 @@ Die Originalanforderungen liegen unverändert in [anforderungen.md](anforderunge
 - Bis 40 Kinder und 8 verfügbare Fahrzeuge pro Berechnung. Mehr erfordert eine Erweiterung und Lastprüfung.
 - Eine feste Suchstrategie macht erfolgreiche Ergebnisse reproduzierbar. Bei Überschreitung des einstellbaren Zeitlimits wird ein Fehler statt einer hardwareabhängigen Teilplanung zurückgegeben; dies nutzt die in US-12 erlaubte Fehleralternative.
 - Der Zielvergleich verwendet exakte Sekundenwerte mit technischer Rundungstoleranz, keinen frei einstellbaren Bereich für „praktisch gleich gut“.
-- Routing- und Geokodierungsserver müssen separat bereitgestellt oder nach ausdrücklicher Freigabe angebunden werden. Sie sind keine automatisch installierten Compose-Dienste.
+- Eigene Routing- und Geokodierungsserver müssen separat bereitgestellt werden. Alternativ kann OpenRouteService nach ausdrücklicher Freigabe direkt aus Node verwendet werden. Sie sind keine automatisch installierten Compose-Dienste.
 - Die manuelle Eingabe überprüfter Koordinaten ist eine Alternative zur Geokodierung und verlangt eine ausdrückliche Bestätigung.
 - Kein dauerhaftes Planungsarchiv. Vorhandene Browserergebnisse sind Momentaufnahmen; Stammdatenänderungen im selben Browser verwerfen die Darstellung, konkurrierende Änderungen werden bei einer Neuberechnung erkannt.
 - Für den Produktivstart sind Domain/TLS, Secrets, eigene Provider, ein realer Routingtest und ein `pg_dump`/`pg_restore`-Test durch den Betreiber erforderlich. Lokale synthetische Tests behaupten keine erfolgreichen Tests gegen noch nicht konfigurierte Dienste.

@@ -121,7 +121,9 @@ test('planning endpoint uses only selected IDs, rejects capacity and revision er
   assert.ok(!JSON.stringify(result.data).includes(data.children[2].id));
   const tables = (
     await f.pool.query(
-      "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
+      f.pool.dialect === 'mariadb'
+        ? 'SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()'
+        : "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
     )
   ).rows.map((r) => r.table_name);
   assert.ok(!tables.includes('plans'));

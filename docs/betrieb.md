@@ -1,12 +1,14 @@
 # Betrieb von Heimweg
 
+Diese Seite beschreibt überwiegend den ursprünglichen PostgreSQL-/Compose-Betrieb. Für den Betrieb ohne Docker siehe [Plesk](plesk.md) oder [Node-Webserver](node-webserver.md); für MariaDB einschließlich Backup/Restore siehe [Datenbanken](datenbanken.md).
+
 ## Erststart und Migrationen
 
 Die Einstellungen werden vor dem Start per Deployment-Umgebung und Secret-Dateien gesetzt. Die App verbindet sich mit der konfigurierten PostgreSQL-Datenbank und führt nummerierte Migrationen aus `migrations/` innerhalb einer Transaktion aus. Eine Tabellensperre schützt Migrationen gegen parallele Ausführung. Für die erste Installation nur eine App-Instanz starten. Eine falsche Verschlüsselungskonfiguration wird anhand eines verschlüsselten Kontrollwerts beim Start erkannt; es werden keine unlesbaren Daten überschrieben.
 
 Der Erststart legt kein Benutzerkonto an. Die tokengebundene Einrichtung erstellt genau ein Administratorkonto. Eine exklusive Datenbanksperre verhindert eine doppelte Ersteinrichtung. Der MVP nutzt dieses Konto für die berechtigten Betreuer; personenbezogene Einzelkonten und Rollenverwaltung sind eine spätere Ausbaustufe.
 
-Produktiv unterstützt: PostgreSQL 18, Node.js 24 LTS, ein App-Prozess. Ein auf mehrere Prozesse verteiltes Optimierungs-Joblimit ist nicht implementiert. Pro Prozess läuft maximal eine Optimierung gleichzeitig. Eine PostgreSQL-Verbindung wird nicht über die gesamte Routenberechnung offen gehalten.
+Produktiv unterstützt: PostgreSQL 18 oder MariaDB 10.11/11.4, Node.js 24 LTS, ein App-Prozess. Ein auf mehrere Prozesse verteiltes Optimierungs-Joblimit ist nicht implementiert. Pro Prozess läuft maximal eine Optimierung gleichzeitig. Eine PostgreSQL-Verbindung wird nicht über die gesamte Routenberechnung offen gehalten.
 
 ## Anmeldung und Sperre
 
@@ -87,7 +89,7 @@ Die automatisierten Tests decken Verschlüsselung, manipulierte Archive, falsche
 
 Node- und PostgreSQL-Images sind auf unterstützte Hauptversionen begrenzt; ihre Tags erhalten Sicherheitsupdates. Für unveränderliche Releases nach erfolgreicher CI die konkret getesteten Image-Digests dokumentieren und im eigenen Deployment fixieren. Keine unbeaufsichtigten Produktionsupdates.
 
-GitHub Actions führt Syntaxprüfungen, Tests gegen PostgreSQL, Browserprüfungen, `npm audit` und einen Container-Scan durch. Hohe/kritische bekannte Paketprobleme bzw. behebbare hohe/kritische Containerprobleme blockieren den Job. Dependabot erstellt wöchentlich Updatevorschläge. Neue Advisory-Daten können einen zuvor grünen Build rot werden lassen; Funde vor Freigaben prüfen.
+GitHub Actions führt Syntaxprüfungen, Tests gegen PostgreSQL und MariaDB, Browserprüfungen, `npm audit` und einen Container-Scan durch. Hohe/kritische bekannte Paketprobleme bzw. behebbare hohe/kritische Containerprobleme blockieren den Job. Dependabot erstellt wöchentlich Updatevorschläge. Neue Advisory-Daten können einen zuvor grünen Build rot werden lassen; Funde vor Freigaben prüfen.
 
 ## Logs und Healthcheck
 

@@ -6,4 +6,5 @@ secrets/
 backups/
 test-results/
 playwright-report/
+tmp/
 *.log

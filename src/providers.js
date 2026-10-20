@@ -1,6 +1,6 @@
 import { ensure, HttpError } from './validation.js';
 
-async function requestJson(url) {
+async function requestJson(url, options = {}) {
   try {
     const response = await fetch(url, {
       signal: AbortSignal.timeout(20000),
@@ -8,7 +8,9 @@ async function requestJson(url) {
       headers: {
         'User-Agent': 'Heimweg/1.0 (self-hosted route planning)',
         Accept: 'application/json',
+        ...options.headers,
       },
+      ...(options.body ? { method: 'POST', body: JSON.stringify(options.body) } : {}),
     });
     if (!response.ok) throw new Error('Provider request failed.');
     return await response.json();
@@ -29,6 +31,30 @@ function available(config, type) {
 }
 export async function geocode(config, query) {
   available(config, 'geocoding');
+  if (config.mapProvider === 'ors') {
+    const url = new URL(`${config.services.geocoding}/geocode/search`);
+    url.search = new URLSearchParams({ api_key: config.orsKey, text: query, size: '5' });
+    const data = await requestJson(url);
+    ensure(
+      Array.isArray(data.features),
+      'Die Adresssuche hat eine ungültige Antwort geliefert.',
+      502,
+    );
+    return data.features
+      .filter(
+        (item) =>
+          item.properties?.label &&
+          Array.isArray(item.geometry?.coordinates) &&
+          item.geometry.coordinates.length >= 2 &&
+          item.geometry.coordinates.every(Number.isFinite),
+      )
+      .slice(0, 5)
+      .map((item) => ({
+        address: item.properties.label,
+        lon: item.geometry.coordinates[0],
+        lat: item.geometry.coordinates[1],
+      }));
+  }
   const url = new URL(`${config.services.geocoding}/search`);
   url.search = new URLSearchParams({ q: query, format: 'jsonv2', limit: '5', addressdetails: '1' });
   const data = await requestJson(url);
@@ -63,6 +89,25 @@ export function validateMatrix(matrix, length) {
 }
 export async function roadMatrix(config, points) {
   available(config, 'routing');
+  if (config.mapProvider === 'ors') {
+    const result = await requestJson(new URL(`${config.services.routing}/v2/matrix/driving-car`), {
+      headers: { Authorization: config.orsKey, 'Content-Type': 'application/json' },
+      body: {
+        locations: points.map((point) => [point.lon, point.lat]),
+        metrics: ['duration', 'distance'],
+        units: 'm',
+      },
+    });
+    ensure(!result.error, 'Der Kartendienst konnte die Straßenmatrix nicht berechnen.', 422);
+    ensure(
+      [...(result.sources || []), ...(result.destinations || [])].every(
+        (point) => typeof point?.snapped_distance !== 'number' || point.snapped_distance <= 500,
+      ),
+      'Eine Adresse liegt mehr als 500 Meter von einer befahrbaren Straße entfernt.',
+      422,
+    );
+    return validateMatrix(result, points.length);
+  }
   const coordinates = points.map((point) => `${point.lon},${point.lat}`).join(';');
   const url = new URL(`${config.services.routing}/table/v1/driving/${coordinates}`);
   url.search = new URLSearchParams({
