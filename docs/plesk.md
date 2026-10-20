@@ -104,6 +104,19 @@ Wenn eine produktive Konfiguration bisher in einem separaten privaten Ordner lie
 
 ## 4. Erster Start
 
+Unter **Skript ausführen** werden npm-Skriptnamen aus package.json eingegeben, keine Dateipfade und keine vollständigen Shellbefehle:
+
+| Eingabe | Zweck / erwartete Ausgabe |
+| --- | --- |
+| `runtime` | Tatsächliche Node-Version und ausführbare Datei des npm-Laufs; erwartet Node 24.x |
+| `migrate` | Konfiguration laden, Datenbank verbinden und Migrationen ausführen; erwartet `Database migrations completed.` |
+| `secrets` | Fehlende Secret-Dateien erzeugen; vorhandene Dateien erhalten |
+
+Nach einem Versionswechsel zuerst `runtime` prüfen, dann **npm-Installation** erneut ausführen und nach vollständiger .env-Konfiguration `migrate` starten. Meldet npm weiter Node 25, verwendet dieser konkrete Lauf noch die falsche Runtime. Eine Anzeige von Node 24 im Dashboard und ein älteres npm-Protokoll können unterschiedliche Zeitpunkte abbilden. Fehlende npm-Skripte bedeuten gegebenenfalls, dass der neueste Repository-Stand noch nicht bereitgestellt wurde.
+
+`scripts/migrate.js` funktioniert als Eingabe in diesem Dialog nicht. Über SSH lautet der Aufruf im Anwendungsordner dagegen `/opt/plesk/node/24/bin/node scripts/migrate.js`.
+
+
 Nach dem Neustart die HTTPS-Domain öffnen und mit dem Inhalt von `secrets/setup_token` das erste Administratorkonto anlegen. Bei übernommenen Schlüsselpfaden den dortigen Setup-Token verwenden. Anschließend Standort, Kinder und Fahrzeuge erfassen oder [CSV importieren](csv.md).
 
 Prüfen:
@@ -147,7 +160,7 @@ Die optionale Vorlage [private.htaccess](../deploy/plesk/private.htaccess) kann 
 
 | Symptom | Prüfung |
 | --- | --- |
-| 502/503 oder npm-Engine-Warnung | Node **24.15.0 oder neuer innerhalb von 24.x**, app.cjs, erfolgreiche npm-Installation, Dateieigentümer und Schlüsselpfade |
+| 502/503 oder npm-Engine-Warnung | Mit npm-Skript runtime tatsächlich verwendetes Node prüfen; Node **24.15.0 oder neuer innerhalb von 24.x**, app.cjs, erfolgreiche npm-Installation, Dateieigentümer und Schlüsselpfade |
 | Falscher Origin / Anmeldung scheitert | APP_ORIGIN exakt auf die HTTPS-Adresse ohne abschließenden Slash setzen; App neu starten |
 | Änderungen an .env wirken nicht | alte Plesk-Umgebungsvariablen bzw. HEIMWEG_ENV_FILE prüfen; App neu starten |
 | MariaDB nicht erreichbar | Host, Port, vollständige Datenbank-/Benutzernamen, Client-IP-Freigabe und TLS prüfen |
