@@ -42,6 +42,7 @@ def fixture():
         for way in range(11, 15):
             ET.SubElement(relation, "member", type="way", ref=str(way),
                           role="inner" if relation_id == 62704 else "outer")
+    root[:] = sorted(root, key=lambda element: ({"node": 0, "way": 1, "relation": 2}[element.tag], int(element.attrib["id"])))
     return root
 
 
