@@ -115,6 +115,10 @@ function renderAuth(setup) {
 }
 async function reload() {
   snapshot = await api('/data');
+  if (currentTab === 'users') {
+    if (snapshot.currentUser?.role === 'admin') snapshot.users = (await api('/users')).users;
+    else currentTab = 'plan';
+  }
   selectedChildren = new Set(
     [...selectedChildren].filter((id) => snapshot.children.some((c) => c.id === id)),
   );
@@ -131,17 +135,72 @@ function render() {
     children: 'Kinder',
     vehicles: 'Fahrzeuge',
     station: 'Standort',
+    ...(snapshot.currentUser?.role === 'admin' ? { users: 'Benutzer' } : {}),
   };
   root.innerHTML = `<div class="shell"><aside class="sidebar"><div class="brand"><img src="/icon.svg" alt=""><div>Heimweg<small>Jugendfeuerwehr</small></div></div><div class="nav-label">Organisation</div><nav aria-label="Hauptnavigation">${Object.entries(
     labels,
   )
     .map(
       ([key, label], i) =>
-        `<button data-tab="${key}" class="${currentTab === key ? 'active' : ''}" ${currentTab === key ? 'aria-current="page"' : ''}><span class="nav-icon" aria-hidden="true">${['◷', '♧', '▱', '⌂'][i]}</span>${label}</button>`,
+        `<button data-tab="${key}" class="${currentTab === key ? 'active' : ''}" ${currentTab === key ? 'aria-current="page"' : ''}><span class="nav-icon" aria-hidden="true">${['◷', '♧', '▱', '⌂', '♙'][i]}</span>${label}</button>`,
     )
     .join(
       '',
-    )}</nav><div class="sidebar-bottom"><div class="status"><span class="status-dot"></span>Gemeinsam gut ankommen</div><button data-action="logout" class="quiet">↪ Abmelden</button><div class="sidebar-note">Eine gute Planung.<br>Ein sicherer Heimweg.</div></div></aside><main class="workspace"><header class="topbar"><span>Jugendfeuerwehr <span aria-hidden="true"> / </span> <strong>${labels[currentTab]}</strong></span><span>${esc(user)}<span class="user-avatar">${esc(initials(user))}</span><button class="quiet" data-action="logout">Abmelden</button></span></header><div id="page">${currentTab === 'plan' ? planPage() : managePage()}</div></main></div>`;
+    )}</nav><div class="sidebar-bottom"><div class="status"><span class="status-dot"></span>Gemeinsam gut ankommen</div><button data-action="logout" class="quiet">↪ Abmelden</button><div class="sidebar-note">Eine gute Planung.<br>Ein sicherer Heimweg.</div></div></aside><main class="workspace"><header class="topbar"><span>Jugendfeuerwehr <span aria-hidden="true"> / </span> <strong>${labels[currentTab]}</strong></span><span>${esc(user)}<span class="user-avatar">${esc(initials(user))}</span><button class="quiet" data-action="logout">Abmelden</button></span></header><div id="page">${currentTab === 'plan' ? planPage() : currentTab === 'users' ? usersPage() : managePage()}</div></main></div>`;
+}
+function usersPage() {
+  return `<div class="page-head"><div><div class="eyebrow">Zugänge verwalten</div><h1>Benutzer</h1><p>Benutzer können Heimfahrten und Stammdaten verwalten. Administratoren verwalten zusätzlich die Konten.</p></div><button class="primary" data-user-action="create">+ Benutzer anlegen</button></div><div class="manage-list">${(snapshot.users || []).map(account => {
+    const self = account.id === snapshot.currentUser.id;
+    return `<article class="manage-row user-row"><div><strong>${esc(account.username)}${self ? ' (du)' : ''}</strong><p>${account.role === 'admin' ? 'Administrator' : 'Benutzer'} · ${account.locked ? 'Gesperrt' : 'Aktiv'} · ${Number(account.failed_attempts)} Fehlversuche</p></div><div class="row-actions"><button data-user-action="password" data-id="${account.id}">Passwort zurücksetzen</button><button data-user-action="lock" data-id="${account.id}" ${self ? 'disabled' : ''}>${account.locked ? 'Entsperren' : 'Sperren'}</button><button data-user-action="role" data-id="${account.id}" ${self ? 'disabled' : ''}>${account.role === 'admin' ? 'Zum Benutzer machen' : 'Zum Administrator machen'}</button></div></article>`;
+  }).join('')}</div><p class="small muted">Nach drei falschen Passworteingaben wird ein Konto gesperrt. Entsperren setzt die Fehlversuche zurück. Das eigene Administratorkonto kann hier nicht gesperrt oder herabgestuft werden.</p>`;
+}
+async function handleUserAction(button) {
+  if (snapshot.currentUser?.role !== 'admin') return;
+  const action = button.dataset.userAction;
+  const account = snapshot.users?.find(entry => entry.id === button.dataset.id);
+  if (action === 'create' || action === 'password') {
+    if (action === 'password' && !account) return;
+    dialog.innerHTML = `<form id="user-form" data-id="${account?.id || ''}"><div class="dialog-head"><h2>${account ? 'Passwort zurücksetzen · ' + esc(account.username) : 'Benutzer anlegen'}</h2><button type="button" class="quiet" data-action="close-dialog" aria-label="Schließen">×</button></div>${account ? '<p>Alle bestehenden Sitzungen dieses Kontos werden beendet. Ein gesperrtes Konto bleibt gesperrt.</p>' : '<label class="field">Benutzername<input name="username" required minlength="3" maxlength="80" autocomplete="off"></label><label class="field">Rolle<select name="role"><option value="user">Benutzer</option><option value="admin">Administrator</option></select></label>'}<label class="field">Neues Passwort<input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password"></label><label class="field">Passwort wiederholen<input name="passwordRepeat" type="password" required minlength="12" maxlength="128" autocomplete="new-password"></label><p class="form-error" id="user-error" role="alert"></p><div class="dialog-actions"><button type="button" data-action="close-dialog">Abbrechen</button><button class="primary" type="submit">${account ? 'Passwort speichern' : 'Benutzer erstellen'}</button></div></form>`;
+    dialog.showModal();
+    return;
+  }
+  if (!account) return;
+  const body = action === 'lock' ? { locked: !account.locked }
+    : { role: account.role === 'admin' ? 'user' : 'admin' };
+  if (!confirm(`Zugang für ${account.username} ändern? Bestehende Sitzungen dieses Kontos werden beendet.`)) return;
+  button.disabled = true;
+  try {
+    await api('/users/' + account.id, 'PATCH', body);
+    await reload();
+    toast('Benutzer aktualisiert.');
+  } finally { button.disabled = false; }
+}
+async function submitUserForm(form) {
+  const values = Object.fromEntries(new FormData(form));
+  const button = form.querySelector('button[type=submit]');
+  button.disabled = true;
+  try {
+    if (values.password !== values.passwordRepeat) throw new Error('Die Passwörter stimmen nicht überein.');
+    const id = form.dataset.id;
+    await api(id ? '/users/' + id + '/password' : '/users', 'POST', id
+      ? { password: values.password }
+      : { username: values.username, password: values.password, role: values.role });
+    const self = id && id === snapshot.currentUser.id;
+    dialog.close();
+    dialog.replaceChildren();
+    if (self) {
+      clearPrivate();
+      renderAuth(false);
+      toast('Passwort geändert. Bitte erneut anmelden.');
+      return;
+    }
+    await reload();
+    toast(id ? 'Passwort zurückgesetzt.' : 'Benutzer angelegt.');
+  } catch (error) {
+    const output = form.querySelector('#user-error');
+    if (output) output.textContent = error.message;
+    else toast(error.message);
+  } finally { button.disabled = false; }
 }
 function empty(title, text, tab, label) {
   return `<div class="empty"><span class="empty-icon" aria-hidden="true">${tab === 'vehicles' ? '▱' : '⌂'}</span><strong>${title}</strong>${text}${tab ? `<br><button data-tab="${tab}">${label} →</button>` : ''}</div>`;
@@ -358,6 +417,7 @@ root.addEventListener('submit', async (event) => {
 dialog.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (event.target.id === 'csv-form') return;
+  if (event.target.id === 'user-form') return submitUserForm(event.target);
   const form = event.target,
     type = form.dataset.type,
     id = form.dataset.id,
@@ -397,13 +457,18 @@ document.addEventListener('click', async (event) => {
   const button = event.target.closest('button');
   if (!button || button.disabled || busy) return;
   try {
+    if (button.dataset.userAction) {
+      await handleUserAction(button);
+      return;
+    }
     if (button.dataset.csv) {
       await handleCsv(button);
       return;
     }
     if (button.dataset.tab) {
       currentTab = button.dataset.tab;
-      render();
+      if (currentTab === 'users') await reload();
+      else render();
       return;
     }
     if (button.dataset.edit) {

@@ -17,7 +17,7 @@ Ein Kind kann nach Bestätigung in der Verwaltung gelöscht werden. Der Datensat
 
 Bereits geöffnete andere Browser, angefertigte Ausdrucke oder Screenshots lassen sich nicht zentral zurückrufen. Datenbank-Backups, PostgreSQL-WAL, Storage-Snapshots und externe Anbieter können ältere Daten entsprechend ihrer Aufbewahrung enthalten. Der Betreiber muss deshalb eine passende kurze Backup-/Log-Aufbewahrung festlegen und nach einem Restore zwischenzeitliche Löschungen erneut anwenden. Ein Datenbank-DELETE allein garantiert keine sofortige physische Entfernung aus allen Speicherschichten.
 
-Abgelaufene Sitzungen und Ratenbegrenzungen werden spätestens beim regelmäßigen Bereinigungslauf (zehn Minuten) gelöscht. IP-Adressen werden für die Ratenbegrenzung nur als Hash in der Datenbank abgelegt; ein Hash ist keine zugesicherte Anonymisierung. Das permanente Sperrmerkmal des Benutzerkontos bleibt bis zum manuellen Datenbankeingriff bestehen.
+Abgelaufene Sitzungen und Ratenbegrenzungen werden spätestens beim regelmäßigen Bereinigungslauf (zehn Minuten) gelöscht. IP-Adressen werden für die Ratenbegrenzung nur als Hash in der Datenbank abgelegt; ein Hash ist keine zugesicherte Anonymisierung. Das Sperrmerkmal des Benutzerkontos bleibt bis zur Entsperrung durch einen Administrator in der Benutzerverwaltung oder zur gezielten Datenbankwiederherstellung bestehen. Rollenänderungen, Sperren und Passwort-Resets widerrufen alle bestehenden Sitzungen des betroffenen Kontos.
 
 ## Verantwortung beim Betreiber
 

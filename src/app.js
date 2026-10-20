@@ -8,6 +8,7 @@ import { HttpError, ensure, integer, location, string, uuid } from './validation
 import { geocode, roadMatrix, roadRoute } from './providers.js';
 import { runOptimizer } from './planning.js';
 import { exportCsv, previewImport } from './csv.js';
+import { listUsers, createUser, updateUser, resetUserPassword } from './users.js';
 
 const assets = {
   '/': ['index.html', 'text/html; charset=utf-8'],
@@ -49,6 +50,7 @@ export async function createApp(pool, config, dependencies = {}) {
   if (crypt.decrypt(check.rows[0].value, 'encryption_check') !== 'heimweg')
     throw new Error('Encryption key verification failed.');
   await setting(pool, 'revision', '0');
+  await setting(pool, 'user_management_lock', '1');
   const providers = { geocode, roadMatrix, roadRoute, optimize: runOptimizer, ...dependencies };
   let calculating = false;
 
@@ -164,6 +166,7 @@ export async function createApp(pool, config, dependencies = {}) {
         );
         return json(200, {
           ...snapshot,
+          currentUser: { id: userSession.user_id, username: userSession.username, role: userSession.role },
           providers: {
             mapTiles: config.mapTiles || null,
             mode: config.providerMode,
@@ -171,6 +174,20 @@ export async function createApp(pool, config, dependencies = {}) {
             geocoding: Boolean(config.services.geocoding) && config.providerMode !== 'disabled',
           },
         });
+      }
+      if (pathname === '/api/users' || pathname.startsWith('/api/users/')) {
+        ensure(userSession.role === 'admin', 'Nur Administratoren dürfen Benutzer verwalten.', 403);
+        if (pathname === '/api/users' && method === 'GET') return json(200, { users: await listUsers(pool) });
+        await rateLimit(pool, `users:${userSession.user_id}`, 30, 60);
+        if (pathname === '/api/users' && method === 'POST')
+          return json(201, await createUser(pool, userSession.user_id, await bodyOf(request)));
+        const match = pathname.match(/^\/api\/users\/([a-f\d-]+)(\/password)?$/i);
+        ensure(match, 'Nicht gefunden.', 404);
+        if (method === 'PATCH' && !match[2])
+          return json(200, await updateUser(pool, userSession.user_id, match[1], await bodyOf(request)));
+        if (method === 'POST' && match[2])
+          return json(200, await resetUserPassword(pool, userSession.user_id, match[1], await bodyOf(request)));
+        return json(404, { error: 'Nicht gefunden.' });
       }
       if (method === 'POST' && pathname === '/api/geocode') {
         await rateLimit(pool, `geocode:${userSession.user_id}`, 30, 60);

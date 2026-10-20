@@ -6,7 +6,7 @@ Diese Seite beschreibt überwiegend den ursprünglichen PostgreSQL-/Compose-Betr
 
 Die Einstellungen werden vor dem Start per Deployment-Umgebung und Secret-Dateien gesetzt. Die App verbindet sich mit der konfigurierten PostgreSQL-Datenbank und führt nummerierte Migrationen aus `migrations/` innerhalb einer Transaktion aus. Eine Tabellensperre schützt Migrationen gegen parallele Ausführung. Für die erste Installation nur eine App-Instanz starten. Eine falsche Verschlüsselungskonfiguration wird anhand eines verschlüsselten Kontrollwerts beim Start erkannt; es werden keine unlesbaren Daten überschrieben.
 
-Der Erststart legt kein Benutzerkonto an. Die tokengebundene Einrichtung erstellt genau ein Administratorkonto. Eine exklusive Datenbanksperre verhindert eine doppelte Ersteinrichtung. Der MVP nutzt dieses Konto für die berechtigten Betreuer; personenbezogene Einzelkonten und Rollenverwaltung sind eine spätere Ausbaustufe.
+Der Erststart legt kein Benutzerkonto an. Die tokengebundene Einrichtung erstellt genau ein Administratorkonto. Eine exklusive Datenbanksperre verhindert eine doppelte Ersteinrichtung. Weitere persönliche Konten werden danach von einem Administrator unter **Benutzer** angelegt. Die Rollen **Benutzer** und **Administrator** unterscheiden ausschließlich den Zugriff auf die Kontenverwaltung; beide dürfen planen und Stammdaten pflegen. [Benutzerverwaltung](benutzer.md).
 
 Produktiv unterstützt: PostgreSQL 18 oder MariaDB 10.11/11.4, Node.js 24 LTS, ein App-Prozess. Ein auf mehrere Prozesse verteiltes Optimierungs-Joblimit ist nicht implementiert. Pro Prozess läuft maximal eine Optimierung gleichzeitig. Eine PostgreSQL-Verbindung wird nicht über die gesamte Routenberechnung offen gehalten.
 
@@ -16,7 +16,7 @@ Passwörter: Argon2id, 64 MiB, drei Durchläufe, Parallelität 1. Sitzungs-IDs e
 
 Fehlversuche sind atomar durch eine Zeilensperre geschützt. Nach drei falschen Passwörtern wird das Konto dauerhaft gesperrt, Sitzungen werden gelöscht. Eine erfolgreiche Anmeldung vor dem dritten Fehler setzt den Zähler zurück. Bekannte, unbekannte und gesperrte Benutzernamen erhalten dieselbe Fehlermeldung. Die Datenbank begrenzt zusätzlich Loginversuche auf 15 pro 15 Minuten und Socket-/freigegebener Proxy-IP. Das bewusste Sperren eines bekannten Kontos durch Dritte bleibt bei der gewünschten Drei-Versuche-Regel möglich.
 
-Es gibt keine Entsperrung in der Weboberfläche und keinen automatischen Ablauf der Sperre. Ausschließlich ein Datenbankadministrator darf manuell entsperren:
+Es gibt keinen automatischen Ablauf der Sperre. Ein anderer aktiver Administrator kann unter **Benutzer → Entsperren** das Konto freigeben. Falls kein Administrator mehr anmelden kann, bleibt die gezielte Wiederherstellung durch einen Datenbankadministrator:
 
 ```bash
 docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
