@@ -77,10 +77,14 @@ Optional werden 0, 30, 60 oder 120 Sekunden Ausstiegszeit je Kind angesetzt. Die
 
 Die optionale Rückfahrt beginnt nach dem letzten Ausstieg. Sie verwendet die gerichtete Straßenmatrix zurück zur Feuerwehr und wird zusätzlich ausgewiesen. Sie ist **weder** Bestandteil des Optimierungsziels **noch** der Vergleichstabelle. Ohne aktivierte Option endet die Anzeige am letzten Kind.
 
-Keine Live-Verkehrsdaten, Kartenansicht, Navigationsübergabe, garantierten Zustellzeiten oder tatsächliche Fahrzeugverfolgung.
+Keine Live-Verkehrsdaten, Navigationsübergabe, garantierten Zustellzeiten oder tatsächliche Fahrzeugverfolgung.
 
 ## Schnittstellenreferenzen
 
 - [OSRM HTTP API](https://project-osrm.org/docs/v5.24.0/api/)
 - [Nominatim Search API](https://nominatim.org/release-docs/latest/api/Search/)
 - [node-postgres Verbindungen](https://node-postgres.com/features/connecting)
+
+## Karten pro Fahrzeug
+
+Zusätzlich zur Matrix verwendet die Karte OSRMs /route/v1/driving/ mit GeoJSON bzw. die ORS-Directions-API. Beide bewahren die berechnete Stoppreihenfolge. [Kartenansicht, Aktualisierung der Proxy-Freigabe und Hintergrundkarten](route-maps.md).
