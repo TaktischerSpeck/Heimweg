@@ -1,5 +1,7 @@
 # OSRM mit Docker im LXC und lokalem TLS hinter vorhandenem Reverse Proxy
 
+Für Adresssuche zusätzlich: [Nominatim-Container mit HTTPS auf LXC-Port 4433](nominatim-lxc-docker.md).
+
 Diese Anleitung installiert **nur den Routingdienst** in einem eigenen LXC. Heimweg bleibt auf Plesk. Im LXC laufen OSRM in Docker und nginx als normaler Linuxdienst. Node.js, MariaDB, Nominatim und ein öffentlicher Zertifikatsbezug werden dort nicht benötigt.
 
 Der Datenweg ist:
@@ -300,7 +302,7 @@ OSRM_PASSWORD="dein-im-lxc-vergebenes-servicepasswort"
 
 Alternativ `OSRM_PASSWORD_FILE` verwenden, siehe [LXC-Anleitung ohne Docker](osrm-lxc.md). App neu starten. Weder `NODE_TLS_REJECT_UNAUTHORIZED=0` setzen noch das interne Zertifikat in der App konfigurieren: Die App spricht den äußeren Proxy mit öffentlichem Zertifikat an.
 
-OSRM liefert Straßenfahrzeiten, keine Adresssuche und keine Kartenkacheln. Kinder-/Standortkoordinaten manuell prüfen oder einen separaten Geocoder verwenden. Dafür ist kein weiterer Dienst Teil dieser Installation.
+OSRM liefert Straßenfahrzeiten, keine Adresssuche und keine Kartenkacheln. Kinder-/Standortkoordinaten manuell prüfen oder einen separaten Geocoder verwenden. Die optionale [Nominatim-Ergänzung](nominatim-lxc-docker.md) installiert die eigene Adresssuche als zusätzlichen Container mit HTTPS auf LXC-Port 4433.
 
 ## Betrieb, Kartenupdates und Rückkehr zum alten Stand
 

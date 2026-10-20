@@ -1,0 +1,30 @@
+name: heimweg-geocoding
+services:
+  nominatim:
+    image: ${NOMINATIM_IMAGE:?Set NOMINATIM_IMAGE to the recorded image digest}
+    restart: unless-stopped
+    shm_size: 1gb
+    ports:
+      - "127.0.0.1:8081:8080"
+    environment:
+      PBF_URL: ${NOMINATIM_PBF_URL:-https://download.geofabrik.de/europe/germany/hessen-latest.osm.pbf}
+      NOMINATIM_PASSWORD: ${NOMINATIM_DB_PASSWORD:?Set a separate internal database password}
+      IMPORT_STYLE: address
+      THREADS: "2"
+      GUNICORN_WORKERS: "2"
+      UPDATE_MODE: none
+      POSTGRES_SHARED_BUFFERS: 512MB
+      POSTGRES_MAINTENANCE_WORK_MEM: 512MB
+      POSTGRES_AUTOVACUUM_WORK_MEM: 256MB
+      POSTGRES_WORK_MEM: 16MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 2GB
+      POSTGRES_SYNCHRONOUS_COMMIT: "on"
+    volumes:
+      - nominatim-data:/var/lib/postgresql/16/main
+    logging:
+      driver: local
+      options:
+        max-size: "5m"
+        max-file: "2"
+volumes:
+  nominatim-data:
