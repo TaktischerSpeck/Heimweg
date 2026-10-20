@@ -463,6 +463,21 @@ input[type='checkbox'] {
   width: 42px;
   height: 38px;
   border-radius: 8px;
+  flex-shrink: 0;
+}
+.vehicle-visual svg {
+  width: 34px;
+  height: 27px;
+}
+.vehicle-route-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.vehicle-route-title svg {
+  width: 30px;
+  height: 24px;
+  flex-shrink: 0;
 }
 .vehicle-top input {
   margin-left: auto;
@@ -476,18 +491,58 @@ input[type='checkbox'] {
   padding-top: 12px;
   gap: 10px;
 }
-.vehicle-bottom label {
+.crew-label {
   font-size: 11px;
   color: var(--muted);
 }
-.vehicle-bottom select {
-  padding: 8px;
-  border: 1px solid #d3ddcc;
-  border-radius: 7px;
+.crew-people {
+  display: flex;
+  gap: 8px;
+  margin-top: 7px;
+}
+.crew-person {
+  width: 46px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  position: relative;
+  box-sizing: border-box;
+}
+.crew-person svg {
+  width: 23px;
+  height: 31px;
+}
+.crew-fixed,
+.crew-toggle[aria-pressed="true"] {
+  color: #31533b;
+  background: #dcebd5;
+  border: 1px solid #96b19b;
+}
+.crew-toggle {
+  padding: 0;
+  color: #879383;
   background: #fff;
-  font-size: 12px;
-  margin-left: 5px;
-  min-height: 40px;
+  border: 1px dashed #a4b29c;
+  cursor: pointer;
+}
+.crew-toggle:focus-visible {
+  outline: 3px solid #31533b;
+  outline-offset: 3px;
+}
+.crew-toggle-mark {
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  background: #31533b;
+  color: white;
+  border-radius: 50%;
+  font-size: 15px;
+  line-height: 1;
 }
 .capacity-label {
   font-size: 12px;
