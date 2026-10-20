@@ -147,3 +147,11 @@ Für lokale Entwicklung eine nicht versionierte `.env` mit `NODE_ENV=development
 Das Backend nutzt die Node-HTTP-API und PostgreSQL oder MariaDB. Die direkten Laufzeitabhängigkeiten sind `pg`, `mariadb`, `argon2` und `csv-parse`. Das Frontend benötigt keinen Build-Schritt und keine externen Fonts oder Skripte. Eine berechnete Planung liegt nur im Arbeitsspeicher der Anfrage und im angemeldeten Browser. Ein separater Worker übernimmt die Optimierung; der Webserver bleibt erreichbar.
 
 Der erste MVP enthält keine Live-Karte, Navigations-App-Übergabe, Echtzeit-Verkehrsdaten, Selbstregistrierung, Rollenverwaltung oder dauerhafte Planungshistorie.
+
+## Automatisches Zusammenführen von Pull Requests
+
+Der Workflow `Merge verified pull requests` führt offene PRs des Repository-Eigentümers und von `dependabot[bot]` nach `main` automatisch per Squash zusammen. Das gilt auch für größere Versionsupdates. Voraussetzung sind eine erfolgreiche aktuelle `Quality and security`-PR-Pipeline mit PostgreSQL-/Browser-/Sicherheitsprüfung sowie beiden MariaDB-Jobs, keine fehlgeschlagenen oder laufenden weiteren Checks und keine angeforderten Reviewänderungen. Entwürfe, Forks, andere Autoren und Konflikte bleiben offen. Die Merge-API prüft den getesteten Head-SHA; bestehende Branch-Regeln werden eingehalten.
+
+Die Automatik läuft nach erfolgreicher PR-CI, zusätzlich zweimal stündlich und manuell unter Actions. Sie arbeitet ausschließlich über GitHub-Metadaten, führt keinen PR-Code mit Schreibrechten aus und benötigt keinen zusätzlichen Token. GitHubs separate Repository-Option „Allow auto-merge“ ist dafür nicht erforderlich. Bei Änderungen an CI-Jobnamen die Liste im Workflow mit anpassen. Zum Pausieren den Workflow in GitHub Actions deaktivieren.
+
+Ein Merge mit `GITHUB_TOKEN` löst keine normalen weiteren Push-Workflows aus. Die vollständige PR-Pipeline muss deshalb bereits erfolgreich sein. Deployments, die ausschließlich von einem Actions-Push-Workflow abhängen, benötigen eine gesonderte Anbindung; externe GitHub-Webhooks für Plesk sind davon getrennt.

@@ -1,0 +1,91 @@
+name: Merge verified pull requests
+on:
+  push:
+    branches: [main]
+  workflow_run:
+    workflows: [Quality and security]
+    types: [completed]
+  workflow_dispatch:
+  schedule:
+    - cron: '17,47 * * * *'
+permissions:
+  actions: read
+  checks: read
+  contents: write
+  pull-requests: write
+  statuses: read
+concurrency:
+  group: automatic-pr-merges
+  cancel-in-progress: false
+jobs:
+  merge:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.event == 'pull_request' &&
+       github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Never check out or execute code from the pull request with this token.
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const repo = context.repo;
+            const fullName = `${repo.owner}/${repo.repo}`;
+            const allowedAuthors = new Set([repo.owner, 'dependabot[bot]']);
+            const requiredJobs = ['test', 'mariadb (10.11)', 'mariadb (11.4)'];
+            const pulls = await github.paginate(github.rest.pulls.list, {
+              ...repo, state: 'open', base: 'main', per_page: 100,
+            });
+            for (const candidate of pulls) {
+              const { data: pr } = await github.rest.pulls.get({
+                ...repo, pull_number: candidate.number,
+              });
+              if (pr.state !== 'open' || pr.draft || pr.base.ref !== 'main' ||
+                  pr.head.repo?.full_name !== fullName ||
+                  !allowedAuthors.has(pr.user.login) || pr.mergeable !== true) continue;
+              const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                ...repo, workflow_id: 'ci.yml', event: 'pull_request',
+                head_sha: pr.head.sha, per_page: 100,
+              });
+              const latest = runs.filter(run => run.head_sha === pr.head.sha)
+                .sort((a, b) => b.id - a.id)[0];
+              if (!latest || latest.status !== 'completed' || latest.conclusion !== 'success') continue;
+              const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+                ...repo, run_id: latest.id, filter: 'latest', per_page: 100,
+              });
+              if (!requiredJobs.every(name => jobs.some(job =>
+                job.name === name && job.status === 'completed' && job.conclusion === 'success')) ||
+                  jobs.some(job => job.conclusion !== 'success')) continue;
+              const checks = await github.paginate(github.rest.checks.listForRef, {
+                ...repo, ref: pr.head.sha, filter: 'latest', per_page: 100,
+              });
+              if (checks.some(check => check.status !== 'completed' ||
+                  !['success', 'neutral', 'skipped'].includes(check.conclusion))) continue;
+              const { data: status } = await github.rest.repos.getCombinedStatusForRef({
+                ...repo, ref: pr.head.sha,
+              });
+              if (status.total_count > 0 && status.state !== 'success') continue;
+              const reviews = await github.paginate(github.rest.pulls.listReviews, {
+                ...repo, pull_number: pr.number, per_page: 100,
+              });
+              const decisions = new Map();
+              for (const review of reviews) {
+                if (['APPROVED', 'CHANGES_REQUESTED', 'DISMISSED'].includes(review.state)) {
+                  decisions.set(review.user.login, review.state);
+                }
+              }
+              if ([...decisions.values()].includes('CHANGES_REQUESTED')) continue;
+              try {
+                const { data: result } = await github.rest.pulls.merge({
+                  ...repo, pull_number: pr.number, sha: pr.head.sha, merge_method: 'squash',
+                });
+                if (result.merged) core.info(`Merged verified PR #${pr.number}.`);
+                else core.warning(`PR #${pr.number} was not merged: ${result.message}`);
+              } catch (error) {
+                // Respect protection rules, conflicts and concurrent head changes.
+                if ([405, 409, 422].includes(error.status)) {
+                  core.info(`PR #${pr.number} is currently blocked; leaving it open.`);
+                } else throw error;
+              }
+            }
