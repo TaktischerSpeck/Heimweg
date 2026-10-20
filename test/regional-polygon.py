@@ -32,7 +32,7 @@ def fixture():
             way = ET.SubElement(root, "way", id=str(index * 10 + offset + 1))
             for node in (offset, (offset + 1) % 4):
                 ET.SubElement(way, "nd", ref=str(index * 10 + node + 1))
-    for relation_id in (62704, 62581):
+    for relation_id in (62581, 62704):
         relation = ET.SubElement(root, "relation", id=str(relation_id))
         ET.SubElement(relation, "tag", k="boundary", v="administrative")
         ET.SubElement(relation, "tag", k="admin_level", v="6")
@@ -55,12 +55,12 @@ class RegionTests(unittest.TestCase):
                 element.set("version", "1")
             ET.ElementTree(root).write(directory / "source.osm")
             def osmium(*args):
-                subprocess.run(["osmium", *map(str, args)], check=True, capture_output=True)
+                subprocess.run(["osmium", *map(str, args)], check=True)
             osmium("cat", directory / "source.osm", "-o", directory / "source.osm.pbf")
             osmium("getid", "--add-referenced", directory / "source.osm.pbf", "r62704", "r62581",
                    "-o", directory / "boundaries.osm")
             subprocess.run([sys.executable, spec.origin, str(directory / "boundaries.osm"),
-                            str(directory / "region.geojson"), "5000"], check=True, capture_output=True)
+                            str(directory / "region.geojson"), "5000"], check=True)
             osmium("extract", "--polygon", directory / "region.geojson", "--strategy", "smart",
                    directory / "source.osm.pbf", "-o", directory / "region.osm.pbf")
             osmium("check-refs", directory / "region.osm.pbf")
