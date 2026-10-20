@@ -9,6 +9,7 @@ for (const autoLoad of [false, true]) {
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a4x8AAAAASUVORK5CYII=', 'base64') });
     });
     await page.goto('/');
+    await expect(page.getByLabel('Benutzername', { exact: true })).toBeVisible();
     await page.evaluate(async autoLoad => {
       const maps = await import('/route-map.js');
       maps.resetRouteMaps({ logout: true });
