@@ -1,0 +1,3 @@
+# Copy only into the private secrets directory as .htaccess.
+# Apache only: keep secrets outside the public document root as well.
+Require all denied
