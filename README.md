@@ -19,6 +19,8 @@ Eine selbst gehostete Webanwendung für die Heimfahrten der Jugendfeuerwehr: Kin
 
 ## Installation ohne Docker
 
+**Eigener Routing-LXC mit HTTPS und Passwortschutz:** [OSRM-LXC einrichten](docs/osrm-lxc.md). Die Node-App unterstützt getrennte Basic-Auth-Zugangsdaten für OSRM und optional Nominatim; Passwörter bleiben im Backend und erfordern HTTPS.
+
 - **Plesk mit GitHub-Webhook:** [Schritt-für-Schritt-Anleitung](docs/plesk.md)
 - **Normaler Linux-Webserver mit Node/systemd:** [Deployment-Anleitung](docs/node-webserver.md)
 - **Externe MariaDB über `.env`:** [Datenbankkonfiguration](docs/datenbanken.md)

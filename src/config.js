@@ -3,6 +3,21 @@ import { readFileSync } from 'node:fs';
 function secret(env, name) {
   return env[`${name}_FILE`] ? readFileSync(env[`${name}_FILE`], 'utf8').trim() : env[name];
 }
+function providerCredentials(env, prefix, endpoint) {
+  const username = env[`${prefix}_USERNAME`] || '';
+  const password = secret(env, `${prefix}_PASSWORD`) || '';
+  if (!username && !password) return null;
+  if (
+    !/^[A-Za-z0-9._@-]{1,128}$/.test(username) ||
+    !password ||
+    password.length > 1024 ||
+    /[\r\n]/.test(password)
+  )
+    throw new Error(`Invalid ${prefix} authentication configuration.`);
+  if (!endpoint || new URL(endpoint).protocol !== 'https:')
+    throw new Error(`${prefix} password authentication requires an HTTPS endpoint.`);
+  return { username, password };
+}
 
 export function getConfig(env = process.env) {
   const production = env.NODE_ENV === 'production';
@@ -51,6 +66,12 @@ export function getConfig(env = process.env) {
     throw new Error('ORS_API_KEY is required.');
   if (mapProvider === 'ors' && providerMode === 'self-hosted')
     throw new Error('ORS integration uses hosted geocoding; choose external mode.');
+  const providerAuth = {
+    routing: providerCredentials(env, 'OSRM', services.routing),
+    geocoding: providerCredentials(env, 'NOMINATIM', services.geocoding),
+  };
+  if (mapProvider !== 'osrm' && (providerAuth.routing || providerAuth.geocoding))
+    throw new Error('OSRM/NOMINATIM credentials require MAP_PROVIDER=osrm.');
   const databaseEngine = env.DB_ENGINE || 'postgres';
   if (!['postgres', 'mariadb'].includes(databaseEngine)) throw new Error('Invalid DB_ENGINE.');
   const maria = databaseEngine === 'mariadb';
@@ -62,6 +83,7 @@ export function getConfig(env = process.env) {
     encryptionKey,
     setupToken,
     services,
+    providerAuth,
     providerMode,
     mapProvider,
     orsKey,

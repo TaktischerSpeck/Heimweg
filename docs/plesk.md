@@ -33,6 +33,8 @@ Damit liegen `package.json` und `app.cjs` direkt im Anwendungsverzeichnis. Ein s
 
 ## 3. MariaDB lokal oder extern verbinden
 
+Für einen eigenen Kartenserver im LXC statt OpenRouteService siehe [OSRM-LXC mit HTTPS/Passwort](osrm-lxc.md). Die Verbindungsdaten werden wie die Datenbankzugänge in der privaten App-Konfiguration eingetragen.
+
 Unter **Datenbanken → Datenbank hinzufügen** eine Datenbank und einen eigenen Datenbankbenutzer anlegen. Für eine externe Datenbank werden diese beim externen Anbieter angelegt. Der Benutzer benötigt Rechte auf **diese Datenbank**, einschließlich Erstellen/Ändern von Tabellen und Indizes für Migrationen. Globale Verwaltungsrechte sind nicht erforderlich.
 
 Für eine externe MariaDB muss der Datenbankserver Verbindungen von der IP des Plesk-Servers erlauben. Bei einer Datenbank auf demselben Server ist `127.0.0.1` üblich; den tatsächlich in Plesk angezeigten Datenbankhost verwenden. Datenbank- und Benutzernamen einschließlich eines eventuellen Plesk-Präfixes vollständig übernehmen.

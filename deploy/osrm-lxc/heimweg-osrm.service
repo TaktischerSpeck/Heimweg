@@ -1,0 +1,17 @@
+[Unit]
+Description=Heimweg private OSRM routing service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=osrm
+Group=osrm
+ExecStart=/usr/local/bin/osrm-routed --algorithm mld --ip 127.0.0.1 --port 5000 --max-table-size 100 --verbosity ERROR /var/lib/heimweg-osrm/current/region.osrm
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

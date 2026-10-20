@@ -1,5 +1,7 @@
 # Straßenrouting und Optimierung
 
+**Eigener LXC:** [OSRM über HTTPS mit Passwortschutz betreiben](osrm-lxc.md). Unterstützte App-Einstellungen: `OSRM_USERNAME`/`OSRM_PASSWORD[_FILE]` sowie optional getrennt `NOMINATIM_USERNAME`/`NOMINATIM_PASSWORD[_FILE]`. Credentials werden nur serverseitig gesendet. Mit Zugangsdaten sind HTTPS und gültige Zertifikate verpflichtend; Redirects bleiben deaktiviert.
+
 ## Ohne eigenen Kartenserver: OpenRouteService aus Node
 
 Die Node-App kann Adresssuche und Straßenmatrizen direkt über einen freigegebenen OpenRouteService-Account abrufen. Dafür in der privaten `.env` konfigurieren:

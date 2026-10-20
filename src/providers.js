@@ -12,15 +12,30 @@ async function requestJson(url, options = {}) {
       },
       ...(options.body ? { method: 'POST', body: JSON.stringify(options.body) } : {}),
     });
+    if (response.status === 401 || response.status === 403)
+      throw new HttpError(
+        502,
+        'Der Kartendienst hat den Zugriff verweigert. Bitte die Zugangsdaten und Freigaben in der Serverkonfiguration prüfen.',
+      );
     if (!response.ok) throw new Error('Provider request failed.');
     return await response.json();
-  } catch {
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
     // Never propagate upstream URLs, addresses or response bodies into logs or client errors.
     throw new HttpError(
       502,
       'Der Kartendienst ist nicht erreichbar oder hat eine ungültige Antwort geliefert.',
     );
   }
+}
+function authHeaders(config, type) {
+  const credentials = config.providerAuth?.[type];
+  if (!credentials) return {};
+  return {
+    Authorization:
+      'Basic ' +
+      Buffer.from(`${credentials.username}:${credentials.password}`, 'utf8').toString('base64'),
+  };
 }
 function available(config, type) {
   ensure(
@@ -57,7 +72,7 @@ export async function geocode(config, query) {
   }
   const url = new URL(`${config.services.geocoding}/search`);
   url.search = new URLSearchParams({ q: query, format: 'jsonv2', limit: '5', addressdetails: '1' });
-  const data = await requestJson(url);
+  const data = await requestJson(url, { headers: authHeaders(config, 'geocoding') });
   ensure(Array.isArray(data), 'Die Adresssuche hat eine ungültige Antwort geliefert.', 502);
   return data
     .slice(0, 5)
@@ -114,7 +129,7 @@ export async function roadMatrix(config, points) {
     annotations: 'duration,distance',
     radiuses: points.map(() => '500').join(';'),
   });
-  const result = await requestJson(url);
+  const result = await requestJson(url, { headers: authHeaders(config, 'routing') });
   ensure(
     result.code === 'Ok',
     'Eine Adresse konnte keiner befahrbaren Straße zugeordnet werden. Bitte die Koordinaten prüfen.',
