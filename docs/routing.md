@@ -1,5 +1,28 @@
 # Straßenrouting und Optimierung
 
+**Eigener LXC:** [OSRM über HTTPS mit Passwortschutz betreiben](osrm-lxc.md). Unterstützte App-Einstellungen: `OSRM_USERNAME`/`OSRM_PASSWORD[_FILE]` sowie optional getrennt `NOMINATIM_USERNAME`/`NOMINATIM_PASSWORD[_FILE]`. Credentials werden nur serverseitig gesendet. Mit Zugangsdaten sind HTTPS und gültige Zertifikate verpflichtend; Redirects bleiben deaktiviert.
+
+## Ohne eigenen Kartenserver: OpenRouteService aus Node
+
+Die Node-App kann Adresssuche und Straßenmatrizen direkt über einen freigegebenen OpenRouteService-Account abrufen. Dafür in der privaten `.env` konfigurieren:
+
+```dotenv
+MAP_PROVIDER=ors
+PROVIDER_MODE=external
+ALLOW_EXTERNAL_LOCATION_DATA=true
+ORS_URL=https://api.openrouteservice.org
+ORS_API_KEY="euer-api-schluessel"
+```
+
+Es wird kein zusätzliches Kartenpaket im Browser geladen. Die Node-App sendet Adressen an `/geocode/search` und Koordinaten als POST an `/v2/matrix/driving-car`. Ein API-Schlüssel sowie ausreichende Anbieter-Kontingente sind erforderlich. Der Anbieter erhält Adressen/Koordinaten; Namen werden nicht übertragen. Schlüssel, Antworten und vollständige URLs landen nicht in den App-Logs. Die ORS-Geokodierung enthält den API-Schlüssel im serverseitigen Queryparameter; auch vorgeschaltete Egress-Proxys dürfen diese URLs nicht protokollieren.
+
+Die Anbindung enthält keinen Offline-Straßendatensatz in Node. Eine Node-Bibliothek allein ersetzt keine gepflegten Straßen-/Adressdaten und Routing-Engine. Wer alle Standortdaten vollständig selbst verarbeiten möchte, betreibt weiterhin eigene OSRM-/Nominatim-Dienste. Der ORS-Adapter ist für gehosteten Betrieb im Modus `external` vorgesehen; die OpenRouteService-Backendinstallation allein enthält nicht automatisch dessen gehostete Geokodierung.
+
+Grenzen/Kontingente des API-Tarifs vor Nutzung prüfen. Bei Fehlern, erschöpftem Kontingent oder nicht erreichbaren Orten wird keine Entfernung geschätzt. Die Matrix ist weiterhin die Grundlage derselben lokalen Optimierung und Fahrzeugvergleiche. Für diesen Adapter wurde das API-Format automatisiert mit synthetischen Antworten geprüft; ein Test mit dem eigenen Account erfolgt nach Konfiguration.
+
+Quellen: [OpenRouteService Matrix](https://giscience.github.io/openrouteservice/api-reference/endpoints/matrix/), [API-Übersicht](https://openrouteservice.org/dev/), [Anbieterlimits](https://openrouteservice.org/restrictions/).
+
+
 ## Zwei getrennte Aufgaben
 
 Nominatim übersetzt eine Adresse in mögliche Koordinaten. Der Benutzer wählt einen Treffer, prüft ihn und kann die Koordinaten korrigieren. Mehrdeutige Suchtreffer werden nicht automatisch gespeichert. Ohne Geocoder können **bereits anderweitig geprüfte** Koordinaten manuell eingetragen und bestätigt werden. Die Bestätigung ersetzt keine eigenständige Prüfung des tatsächlichen Ausstiegsorts.

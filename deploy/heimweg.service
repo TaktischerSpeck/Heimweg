@@ -1,0 +1,22 @@
+[Unit]
+Description=Heimweg Node.js application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=heimweg
+Group=heimweg
+WorkingDirectory=/opt/heimweg
+ExecStart=/usr/bin/node /opt/heimweg/app.cjs
+Environment=NODE_ENV=production
+Environment=HEIMWEG_ENV_FILE=/etc/heimweg/heimweg.env
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

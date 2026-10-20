@@ -5,6 +5,20 @@ import { ensure, string } from './validation.js';
 
 export async function rateLimit(pool, key, limit = 15, seconds = 900) {
   const hashed = digest(key);
+  if (pool.dialect === 'mariadb') {
+    const attempts = await transaction(pool, async (client) => {
+      await client.query(
+        `INSERT INTO rate_limits(key, attempts, resets_at) VALUES ($1, 1, DATE_ADD(now(), INTERVAL $2 SECOND))
+        ON DUPLICATE KEY UPDATE attempts = IF(resets_at <= now(), 1, attempts + 1),
+        resets_at = IF(resets_at <= now(), DATE_ADD(now(), INTERVAL $2 SECOND), resets_at)`,
+        [hashed, seconds],
+      );
+      return (await client.query('SELECT attempts FROM rate_limits WHERE key = $1', [hashed]))
+        .rows[0].attempts;
+    });
+    ensure(attempts <= limit, 'Zu viele Anfragen. Bitte später erneut versuchen.', 429);
+    return;
+  }
   const { rows } = await pool.query(
     `INSERT INTO rate_limits(key, attempts, resets_at) VALUES ($1, 1, now() + $2 * interval '1 second')
     ON CONFLICT (key) DO UPDATE SET
@@ -21,7 +35,11 @@ export async function setup(pool, config, body) {
   const password = string(body.password, 'Passwort', 12, 128);
   const hash = await hashPassword(password);
   await transaction(pool, async (client) => {
-    await client.query('LOCK TABLE users IN EXCLUSIVE MODE');
+    await client.query(
+      pool.dialect === 'mariadb'
+        ? "SELECT value FROM settings WHERE key = 'setup_lock' FOR UPDATE"
+        : 'LOCK TABLE users IN EXCLUSIVE MODE',
+    );
     const result = await client.query('SELECT id FROM users LIMIT 1');
     ensure(!result.rowCount, 'Die Ersteinrichtung ist bereits abgeschlossen.', 409);
     await client.query('INSERT INTO users(id, username, password_hash) VALUES ($1, $2, $3)', [
@@ -44,7 +62,7 @@ export async function login(pool, body, dummyHash, key) {
     if (!user || user.locked) return null;
     if (!valid) {
       await client.query(
-        'UPDATE users SET failed_attempts = failed_attempts + 1, locked = (failed_attempts + 1 >= 3) WHERE id = $1',
+        'UPDATE users SET locked = (failed_attempts + 1 >= 3), failed_attempts = failed_attempts + 1 WHERE id = $1',
         [user.id],
       );
       // Revoke sessions when the account becomes locked.
@@ -56,8 +74,8 @@ export async function login(pool, body, dummyHash, key) {
     const sessionToken = token();
     const csrfToken = csrfFor(sessionToken, key);
     await client.query(
-      "INSERT INTO sessions(token_hash, user_id, csrf_hash, expires_at) VALUES ($1, $2, $3, now() + interval '30 minutes')",
-      [digest(sessionToken), user.id, digest(csrfToken)],
+      'INSERT INTO sessions(token_hash, user_id, csrf_hash, expires_at) VALUES ($1, $2, $3, $4)',
+      [digest(sessionToken), user.id, digest(csrfToken), new Date(Date.now() + 30 * 60 * 1000)],
     );
     return { sessionToken, csrfToken, username: user.username };
   });
@@ -81,9 +99,9 @@ export async function session(pool, request, key) {
     [digest(raw)],
   );
   if (!rows.length) return null;
-  await pool.query(
-    "UPDATE sessions SET expires_at = now() + interval '30 minutes' WHERE token_hash = $1",
-    [digest(raw)],
-  );
+  await pool.query('UPDATE sessions SET expires_at = $2 WHERE token_hash = $1', [
+    digest(raw),
+    new Date(Date.now() + 30 * 60 * 1000),
+  ]);
   return { ...rows[0], csrfToken: csrfFor(raw, key) };
 }

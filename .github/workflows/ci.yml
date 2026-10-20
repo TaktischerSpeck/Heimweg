@@ -7,7 +7,41 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
+  mariadb:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version: ['10.11', '11.4']
+    services:
+      mariadb:
+        image: mariadb:${{ matrix.version }}
+        env:
+          MARIADB_ROOT_PASSWORD: ci-only-root
+          MARIADB_DATABASE: heimweg_test
+          MARIADB_USER: heimweg
+          MARIADB_PASSWORD: ci-only-not-for-production
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+        env:
+          TEST_MARIADB_URL: mariadb://heimweg:ci-only-not-for-production@127.0.0.1:3306/heimweg_test
+      - run: node test/ci-native-start.js
+        env:
+          TEST_MARIADB_URL: mariadb://heimweg:ci-only-not-for-production@127.0.0.1:3306/heimweg_test
   test:
     runs-on: ubuntu-latest
     services:

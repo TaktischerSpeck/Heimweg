@@ -1,3 +1,4 @@
+import './load-env.js';
 import { getConfig } from './config.js';
 import { createPool, migrate } from './db.js';
 import { createApp } from './app.js';
@@ -17,7 +18,7 @@ try {
       .catch(() => console.error('Rate-limit cleanup failed.'));
   }, 600000);
   cleanup.unref();
-  server.listen(config.port, '0.0.0.0', () =>
+  server.listen(config.port, config.host, () =>
     console.log(`Heimweg listening on port ${config.port}.`),
   );
   function shutdown() {

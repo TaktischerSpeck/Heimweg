@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 test('setup, login, mobile master data, planning, stale results and deletion', async ({ page }) => {
   const errors = [];
@@ -90,6 +91,53 @@ test('setup, login, mobile master data, planning, stale results and deletion', a
     .getByRole('button', { name: 'Löschen' })
     .click();
   await expect(page.getByText('Testkind Beta', { exact: true })).not.toBeVisible();
+  await page.getByRole('button', { name: 'CSV importieren', exact: true }).click();
+  await page
+    .getByLabel('CSV-Datei')
+    .setInputFiles({
+      name: 'synthetic-children.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from('name;address\nSynthetic CSV Child;Synthetic CSV Street 10'),
+    });
+  await page.getByRole('button', { name: 'Vorschau laden' }).click();
+  await expect(page.getByText('1 neu · 0 Änderungen · 1 Adressen noch zu prüfen')).toBeVisible();
+  await page.getByRole('checkbox', { name: /Ich habe die Vorschau/ }).check();
+  await page.getByRole('button', { name: 'Import bestätigen', exact: true }).click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  await expect(page.getByRole('article').filter({ hasText: 'Synthetic CSV Child' })).toContainText(
+    'Adresse noch prüfen',
+  );
+  const childDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'CSV exportieren', exact: true }).click();
+  expect(await readFile(await (await childDownload).path(), 'utf8')).toContain(
+    'Synthetic CSV Child',
+  );
+  await page.getByRole('button', { name: 'Tagesplanung', exact: true }).click();
+  await page.getByRole('checkbox', { name: /Synthetic CSV Child/ }).check();
+  await expect(
+    page.getByText(/Mindestens eine ausgewählte Kinderadresse ist noch zu prüfen/),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Fahrzeuge', exact: true }).click();
+  await page.getByRole('button', { name: 'CSV importieren', exact: true }).click();
+  await page
+    .getByLabel('CSV-Datei')
+    .setInputFiles({
+      name: 'synthetic-vehicles.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from('name;seats\nSynthetic CSV Vehicle;9'),
+    });
+  await page.getByRole('button', { name: 'Vorschau laden' }).click();
+  await page.getByRole('checkbox', { name: /Ich habe die Vorschau/ }).check();
+  await page.getByRole('button', { name: 'Import bestätigen', exact: true }).click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  await expect(
+    page.getByRole('article').filter({ hasText: 'Synthetic CSV Vehicle' }),
+  ).toContainText('9 Sitzplätze');
+  const vehicleDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'CSV exportieren', exact: true }).click();
+  expect(await readFile(await (await vehicleDownload).path(), 'utf8')).toContain(
+    'Synthetic CSV Vehicle',
+  );
   await page.locator('.topbar').getByRole('button', { name: 'Abmelden' }).click();
   await expect(page.getByRole('heading', { name: 'Schön, dass du da bist.' })).toBeVisible();
   expect(errors).toEqual([]);

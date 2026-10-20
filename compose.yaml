@@ -27,6 +27,14 @@ services:
       NODE_ENV: production
       APP_ORIGIN: ${APP_ORIGIN:?Set APP_ORIGIN in .env}
       PORT: 3000
+      HOST: 0.0.0.0
+      DB_ENGINE: ${DB_ENGINE:-postgres}
+      DB_HOST: ${DB_HOST:-}
+      DB_PORT: ${DB_PORT:-}
+      DB_NAME: ${DB_NAME:-}
+      DB_USER: ${DB_USER:-}
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      DB_SSL: ${DB_SSL:-${PGSSL:-false}}
       PGHOST: ${PGHOST:-db}
       PGPORT: ${PGPORT:-5432}
       PGDATABASE: ${PGDATABASE:-heimweg}
@@ -37,8 +45,15 @@ services:
       SETUP_TOKEN_FILE: /run/secrets/setup_token
       BACKUP_KEY_FILE: /run/secrets/backup_key
       PROVIDER_MODE: ${PROVIDER_MODE:-disabled}
+      MAP_PROVIDER: ${MAP_PROVIDER:-osrm}
+      ORS_URL: ${ORS_URL:-https://api.openrouteservice.org}
+      ORS_API_KEY: ${ORS_API_KEY:-}
       OSRM_URL: ${OSRM_URL:-}
+      OSRM_USERNAME: ${OSRM_USERNAME:-}
+      OSRM_PASSWORD: ${OSRM_PASSWORD:-}
       NOMINATIM_URL: ${NOMINATIM_URL:-}
+      NOMINATIM_USERNAME: ${NOMINATIM_USERNAME:-}
+      NOMINATIM_PASSWORD: ${NOMINATIM_PASSWORD:-}
       ALLOW_EXTERNAL_LOCATION_DATA: ${ALLOW_EXTERNAL_LOCATION_DATA:-false}
       TRUSTED_PROXY_IP: ${TRUSTED_PROXY_IP:-}
     ports:

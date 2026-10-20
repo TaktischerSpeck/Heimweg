@@ -102,6 +102,6 @@ test('session expiration and secure cookie in production', async (t) => {
   assert.match(logged.headers.get('set-cookie'), /HttpOnly/);
   assert.match(logged.headers.get('set-cookie'), /Secure/);
   assert.match(logged.headers.get('set-cookie'), /SameSite=Strict/);
-  await f.pool.query("UPDATE sessions SET expires_at = now() - interval '1 second'");
+  await f.pool.query('UPDATE sessions SET expires_at = $1', [new Date(Date.now() - 1000)]);
   assert.equal((await f.request('/api/data')).status, 401);
 });

@@ -3,6 +3,21 @@ import { readFileSync } from 'node:fs';
 function secret(env, name) {
   return env[`${name}_FILE`] ? readFileSync(env[`${name}_FILE`], 'utf8').trim() : env[name];
 }
+function providerCredentials(env, prefix, endpoint) {
+  const username = env[`${prefix}_USERNAME`] || '';
+  const password = secret(env, `${prefix}_PASSWORD`) || '';
+  if (!username && !password) return null;
+  if (
+    !/^[A-Za-z0-9._@-]{1,128}$/.test(username) ||
+    !password ||
+    password.length > 1024 ||
+    /[\r\n]/.test(password)
+  )
+    throw new Error(`Invalid ${prefix} authentication configuration.`);
+  if (!endpoint || new URL(endpoint).protocol !== 'https:')
+    throw new Error(`${prefix} password authentication requires an HTTPS endpoint.`);
+  return { username, password };
+}
 
 export function getConfig(env = process.env) {
   const production = env.NODE_ENV === 'production';
@@ -18,11 +33,16 @@ export function getConfig(env = process.env) {
   if (!setupToken || setupToken.length < 32)
     throw new Error('SETUP_TOKEN must contain at least 32 characters.');
   const services = {};
+  const mapProvider = env.MAP_PROVIDER || 'osrm';
+  if (!['osrm', 'ors'].includes(mapProvider)) throw new Error('Invalid MAP_PROVIDER.');
   for (const [name, variable] of [
     ['routing', 'OSRM_URL'],
     ['geocoding', 'NOMINATIM_URL'],
   ]) {
-    const endpoint = env[variable] || '';
+    const endpoint =
+      mapProvider === 'ors'
+        ? env.ORS_URL || 'https://api.openrouteservice.org'
+        : env[variable] || '';
     if (endpoint) {
       const url = new URL(endpoint);
       if (
@@ -41,27 +61,48 @@ export function getConfig(env = process.env) {
     throw new Error('Invalid PROVIDER_MODE.');
   if (providerMode === 'external' && env.ALLOW_EXTERNAL_LOCATION_DATA !== 'true')
     throw new Error('External providers require explicit approval.');
+  const orsKey = secret(env, 'ORS_API_KEY');
+  if (mapProvider === 'ors' && providerMode !== 'disabled' && !orsKey)
+    throw new Error('ORS_API_KEY is required.');
+  if (mapProvider === 'ors' && providerMode === 'self-hosted')
+    throw new Error('ORS integration uses hosted geocoding; choose external mode.');
+  const providerAuth = {
+    routing: providerCredentials(env, 'OSRM', services.routing),
+    geocoding: providerCredentials(env, 'NOMINATIM', services.geocoding),
+  };
+  if (mapProvider !== 'osrm' && (providerAuth.routing || providerAuth.geocoding))
+    throw new Error('OSRM/NOMINATIM credentials require MAP_PROVIDER=osrm.');
+  const databaseEngine = env.DB_ENGINE || 'postgres';
+  if (!['postgres', 'mariadb'].includes(databaseEngine)) throw new Error('Invalid DB_ENGINE.');
+  const maria = databaseEngine === 'mariadb';
+  const ssl = env.DB_SSL ?? (maria ? undefined : env.PGSSL);
+  const ca = env.DB_SSL_CA_FILE ? readFileSync(env.DB_SSL_CA_FILE, 'utf8') : undefined;
   return {
     production,
     origin,
     encryptionKey,
     setupToken,
     services,
+    providerAuth,
     providerMode,
+    mapProvider,
+    orsKey,
+    databaseEngine,
     port: Number(env.PORT || 3000),
+    host: env.HOST || '127.0.0.1',
     sessionMinutes: 30,
     // Trust only an explicitly configured direct reverse proxy, never arbitrary forwarding headers.
     trustedProxy: env.TRUSTED_PROXY_IP || '',
     database: {
-      host: env.PGHOST || 'localhost',
-      port: Number(env.PGPORT || 5432),
-      database: env.PGDATABASE || 'heimweg',
-      user: env.PGUSER || 'heimweg',
-      password: secret(env, 'PGPASSWORD'),
+      host: env.DB_HOST || (!maria && env.PGHOST) || 'localhost',
+      port: Number(env.DB_PORT || (!maria && env.PGPORT) || (maria ? 3306 : 5432)),
+      database: env.DB_NAME || (!maria && env.PGDATABASE) || 'heimweg',
+      user: env.DB_USER || (!maria && env.PGUSER) || 'heimweg',
+      password: secret(env, 'DB_PASSWORD') ?? (maria ? undefined : secret(env, 'PGPASSWORD')),
       max: 10,
       connectionTimeoutMillis: 5000,
       statement_timeout: 15000,
-      ssl: env.PGSSL === 'true' ? { rejectUnauthorized: true } : false,
+      ssl: ssl === 'true' ? { rejectUnauthorized: true, ...(ca ? { ca } : {}) } : false,
     },
   };
 }
