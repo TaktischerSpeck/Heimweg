@@ -1,5 +1,7 @@
 # Eigener OSRM-LXC mit HTTPS und Passwortschutz
 
+Für **Docker im LXC mit lokalem Zertifikat hinter einem vorhandenen Reverse Proxy** die [eigene Docker-Anleitung](osrm-lxc-docker.md) verwenden. Die folgende Anleitung beschreibt den nativen Betrieb ohne Docker und mit eigenem öffentlichem TLS-Endpunkt.
+
 Die Heimweg-App bleibt auf dem Plesk-Server. Ein separater Linux-LXC übernimmt die Straßenberechnung. nginx im LXC schützt die API mit HTTPS und HTTP Basic Auth. Die Zugangsdaten werden ausschließlich von Node an nginx gesendet, weder im Browser noch in URLs oder App-Logs ausgegeben. OSRM selbst erhält das Passwort nicht und lauscht nur auf `127.0.0.1:5000`.
 
 Die passenden Dateien liegen in `deploy/osrm-lxc/`: ein systemd-Dienst, eine HTTP-Konfiguration ausschließlich für Zertifikate und das geschützte HTTPS-Gateway. Die Dateien sind Vorlagen; Hostname und Zertifikatpfade müssen vor dem Aktivieren angepasst werden.
