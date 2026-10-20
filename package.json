@@ -17,7 +17,7 @@
     "backup:decrypt": "node scripts/backup.js decrypt"
   },
   "dependencies": {
-    "argon2": "0.44.0",
+    "argon2": "0.45.1",
     "csv-parse": "7.0.3",
     "mariadb": "3.5.4",
     "pg": "8.23.1"
