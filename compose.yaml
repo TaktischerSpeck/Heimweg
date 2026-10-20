@@ -46,6 +46,9 @@ services:
       BACKUP_KEY_FILE: /run/secrets/backup_key
       PROVIDER_MODE: ${PROVIDER_MODE:-disabled}
       MAP_PROVIDER: ${MAP_PROVIDER:-osrm}
+      MAP_TILE_MODE: ${MAP_TILE_MODE:-external}
+      MAP_TILE_URL: ${MAP_TILE_URL:-}
+      MAP_TILE_ATTRIBUTION: ${MAP_TILE_ATTRIBUTION:-© OpenStreetMap contributors}
       ORS_URL: ${ORS_URL:-https://api.openrouteservice.org}
       ORS_API_KEY: ${ORS_API_KEY:-}
       OSRM_URL: ${OSRM_URL:-}

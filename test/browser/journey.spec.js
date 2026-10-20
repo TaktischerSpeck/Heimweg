@@ -2,7 +2,14 @@ import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
 test('setup, login, mobile master data, planning, stale results and deletion', async ({ page }) => {
-  const errors = [];
+  const errors = [], tileRequests = [];
+  await page.route('https://tile.openstreetmap.org/**', async route => {
+    tileRequests.push(route.request().url());
+    await route.fulfill({
+      contentType: 'image/png',
+      body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a4x8AAAAASUVORK5CYII=', 'base64'),
+    });
+  });
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
   await page.getByLabel('Einrichtungstoken').fill('synthetic-browser-setup-token-000000');
@@ -67,6 +74,18 @@ test('setup, login, mobile master data, planning, stale results and deletion', a
   await expect(
     page.getByText('3 Kinder sind vollständig zugeordnet.', { exact: false }),
   ).toBeVisible();
+  await expect(page.locator('.route-map-canvas')).toHaveCount(2);
+  await expect(page.locator('.map-route-line')).toHaveCount(2);
+  await expect(page.locator('.map-stop-marker')).toHaveCount(3);
+  await expect(page.locator('.map-station-marker')).toHaveCount(2);
+  expect(tileRequests).toHaveLength(0);
+  const lineBeforeZoom = await page.locator('.map-route-line').first().getAttribute('points');
+  await page.getByRole('button', { name: 'Karte vergrößern', exact: true }).first().click();
+  expect(await page.locator('.map-route-line').first().getAttribute('points')).not.toBe(lineBeforeZoom);
+  await page.getByRole('button', { name: 'Gesamte Route anzeigen', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Kartenhintergrund laden', exact: true }).first().click();
+  await expect.poll(() => tileRequests.length).toBeGreaterThan(0);
+  await expect(page.locator('.route-map-consent:visible')).toHaveCount(0);
   await page.setViewportSize({ width: 1440, height: 1100 });
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   await page.screenshot({ path: 'test-results/planning-desktop.png', fullPage: true });
@@ -77,7 +96,17 @@ test('setup, login, mobile master data, planning, stale results and deletion', a
   );
   await page.getByRole('checkbox', { name: /Testkind Beta/ }).uncheck();
   await expect(page.getByText('Diese Routen sind veraltet.', { exact: false })).toBeVisible();
+  await page.getByText('Optionen für diese Heimfahrt').click();
+  await page.getByRole('checkbox', { name: 'Rückfahrt zur Feuerwehr separat anzeigen' }).check();
+  await page.route('**/api/route-map', route => route.fulfill({
+    status: 502, contentType: 'application/json', body: JSON.stringify({ error: 'Synthetic routing unavailable.' }),
+  }));
   await page.getByRole('button', { name: 'Routen neu berechnen' }).click();
+  await expect(page.locator('.route-map-error')).toHaveCount(1);
+  await expect(page.locator('.stop-list')).toHaveCount(1);
+  await page.unroute('**/api/route-map');
+  await page.getByRole('button', { name: 'Karte erneut laden', exact: true }).first().click();
+  await expect(page.locator('.map-return-line')).toHaveCount(1);
   await expect(
     page.getByText('2 Kinder sind vollständig zugeordnet.', { exact: false }),
   ).toBeVisible();
@@ -140,5 +169,6 @@ test('setup, login, mobile master data, planning, stale results and deletion', a
   );
   await page.locator('.topbar').getByRole('button', { name: 'Abmelden' }).click();
   await expect(page.getByRole('heading', { name: 'Schön, dass du da bist.' })).toBeVisible();
+  await expect(page.locator('.route-map-canvas')).toHaveCount(0);
   expect(errors).toEqual([]);
 });

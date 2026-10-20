@@ -112,7 +112,7 @@ nginx -t
 systemctl reload nginx
 ```
 
-Die Konfiguration schützt ausschließlich den benötigten Pfad `/table/v1/driving/`; andere API-Funktionen sind nicht veröffentlicht. nginx entfernt den `Authorization`-Header vor der Weitergabe an OSRM. Accesslogs und Request-Fehlerlogs sind in diesen Serverblöcken deaktiviert, weil Routing-URLs Wohnortkoordinaten enthalten. OSRM läuft mit Fehler- statt Debug-Verbosity; auch vorgelagerte Proxys dürfen keine vollständigen URLs/Headers aufzeichnen.
+Die Konfiguration schützt `/table/v1/driving/` für Matrizen und `/route/v1/driving/` für Fahrzeugkarten; andere API-Funktionen sind nicht veröffentlicht. nginx entfernt den `Authorization`-Header vor der Weitergabe an OSRM. Accesslogs und Request-Fehlerlogs sind in diesen Serverblöcken deaktiviert, weil Routing-URLs Wohnortkoordinaten enthalten. OSRM läuft mit Fehler- statt Debug-Verbosity; auch vorgelagerte Proxys dürfen keine vollständigen URLs/Headers aufzeichnen.
 
 Optional die vorbereiteten `allow`-/`deny`-Zeilen aktivieren und die tatsächliche ausgehende IP des Plesk-Servers eintragen. Mit `satisfy all` sind dann **Passwort und IP-Freigabe** erforderlich. Alternativ kann dieselbe Einschränkung in der Proxmox-/LXC-Firewall erfolgen. Den Zertifikats-Challengezugang dabei gesondert berücksichtigen.
 
@@ -180,3 +180,5 @@ Passwortdatei und App-Servicepasswort getrennt gesichert aufbewahren. Bei Rotati
 - [nginx Basic Authentication](https://nginx.org/en/docs/http/ngx_http_auth_basic_module.html)
 
 Die App-Authentifizierung, Trennung der Zugangsdaten, HTTPS-Vorgabe und das Ablehnen von Redirects werden automatisiert geprüft. Die Templates wurden für dieses Betriebsmodell erstellt; ein realer Build des Kartenausschnitts, LXC-Start und Zertifikatsbezug müssen auf deinem tatsächlichen Container durchgeführt und abgenommen werden. Es wurden keine Befehle auf deinem Proxmox-/Plesk-System ausgeführt.
+
+Für bestehende Installationen: [zusätzlichen Route-Endpunkt freigeben und Fahrzeugkarten einrichten](route-maps.md).

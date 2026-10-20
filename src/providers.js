@@ -142,3 +142,49 @@ export async function roadMatrix(config, points) {
   );
   return validateMatrix(result, points.length);
 }
+
+export function validateRouteGeometry(value) {
+  ensure(
+    value?.type === 'LineString' &&
+      Array.isArray(value.coordinates) &&
+      value.coordinates.length >= 2 &&
+      value.coordinates.length <= 100000 &&
+      value.coordinates.every((point) =>
+        Array.isArray(point) && point.length >= 2 &&
+        Number.isFinite(point[0]) && point[0] >= -180 && point[0] <= 180 &&
+        Number.isFinite(point[1]) && point[1] >= -90 && point[1] <= 90),
+    'Der Kartendienst hat keinen gültigen Straßenverlauf geliefert.',
+    502,
+  );
+  return { type: 'LineString', coordinates: value.coordinates.map(([lon, lat]) => [lon, lat]) };
+}
+
+export async function roadRoute(config, points) {
+  available(config, 'routing');
+  ensure(points.length >= 2 && points.length <= 42, 'Ungültige Anzahl von Routenpunkten.');
+  const coordinates = points.map(({ lon, lat }) => [lon, lat]);
+  if (config.mapProvider === 'ors') {
+    const result = await requestJson(
+      new URL(`${config.services.routing}/v2/directions/driving-car/geojson`),
+      {
+        headers: { Authorization: config.orsKey, 'Content-Type': 'application/json' },
+        body: { coordinates, instructions: false, radiuses: points.map(() => 500) },
+      },
+    );
+    return validateRouteGeometry(result.features?.[0]?.geometry);
+  }
+  const url = new URL(`${config.services.routing}/route/v1/driving/${coordinates.map(p => p.join(',')).join(';')}`);
+  url.search = new URLSearchParams({
+    geometries: 'geojson', overview: 'full', steps: 'false', alternatives: 'false', continue_straight: 'false',
+    radiuses: points.map(() => '500').join(';'),
+  });
+  const result = await requestJson(url, { headers: authHeaders(config, 'routing') });
+  ensure(result.code === 'Ok', 'Der Straßenverlauf konnte nicht geladen werden.', 502);
+  ensure(
+    Array.isArray(result.waypoints) && result.waypoints.length === points.length &&
+      result.waypoints.every(p => Number.isFinite(p.distance) && p.distance <= 500),
+    'Ein Routenpunkt konnte keiner nahe gelegenen Straße zugeordnet werden.',
+    422,
+  );
+  return validateRouteGeometry(result.routes?.[0]?.geometry);
+}

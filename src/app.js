@@ -5,13 +5,14 @@ import { setup, login, session, rateLimit } from './auth.js';
 import { cipher, digest, equal, hashPassword, token } from './security.js';
 import { transaction, setting, bumpRevision } from './db.js';
 import { HttpError, ensure, integer, location, string, uuid } from './validation.js';
-import { geocode, roadMatrix } from './providers.js';
+import { geocode, roadMatrix, roadRoute } from './providers.js';
 import { runOptimizer } from './planning.js';
 import { exportCsv, previewImport } from './csv.js';
 
 const assets = {
   '/': ['index.html', 'text/html; charset=utf-8'],
   '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
+  '/route-map.js': ['route-map.js', 'text/javascript; charset=utf-8'],
   '/style.css': ['style.css', 'text/css; charset=utf-8'],
   '/icon.svg': ['icon.svg', 'image/svg+xml'],
 };
@@ -48,7 +49,7 @@ export async function createApp(pool, config, dependencies = {}) {
   if (crypt.decrypt(check.rows[0].value, 'encryption_check') !== 'heimweg')
     throw new Error('Encryption key verification failed.');
   await setting(pool, 'revision', '0');
-  const providers = { geocode, roadMatrix, optimize: runOptimizer, ...dependencies };
+  const providers = { geocode, roadMatrix, roadRoute, optimize: runOptimizer, ...dependencies };
   let calculating = false;
 
   async function data(client = pool) {
@@ -84,7 +85,7 @@ export async function createApp(pool, config, dependencies = {}) {
     response.setHeader('Referrer-Policy', 'no-referrer');
     response.setHeader(
       'Content-Security-Policy',
-      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+      `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' ${config.mapTiles?.origin || ''}; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`,
     );
     response.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
     if (config.production) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -164,6 +165,7 @@ export async function createApp(pool, config, dependencies = {}) {
         return json(200, {
           ...snapshot,
           providers: {
+            mapTiles: config.mapTiles || null,
             mode: config.providerMode,
             routing: Boolean(config.services.routing) && config.providerMode !== 'disabled',
             geocoding: Boolean(config.services.geocoding) && config.providerMode !== 'disabled',
@@ -314,6 +316,37 @@ export async function createApp(pool, config, dependencies = {}) {
         });
         return json(method === 'POST' ? 201 : 200, { ok: true });
       }
+
+      if (method === 'POST' && pathname === '/api/route-map') {
+        await rateLimit(pool, `route-map:${userSession.user_id}`, 80, 60);
+        const body = await bodyOf(request);
+        ensure(
+          Array.isArray(body.children) && body.children.length > 0 && body.children.length <= 40 &&
+          new Set(body.children).size === body.children.length,
+          'Bitte 1 bis 40 unterschiedliche Routenstopps angeben.',
+        );
+        const snapshot = await transaction(pool, client => data(client), true);
+        ensure(snapshot.station, 'Bitte zuerst den Feuerwehrstandort hinterlegen.');
+        ensure(body.revision === snapshot.revision, 'Die Route ist veraltet. Bitte neu berechnen.', 409);
+        ensure(snapshot.vehicles.some(v => v.id === body.vehicleId), 'Fahrzeug nicht gefunden.', 404);
+        const stops = body.children.map(id => {
+          uuid(id);
+          const child = snapshot.children.find(c => c.id === id);
+          ensure(child && child.confirmed === true &&
+            typeof child.lat === 'number' && typeof child.lon === 'number',
+            'Eine Routenadresse fehlt oder ist noch nicht geprüft.', 409);
+          return child;
+        });
+        const geometry = await providers.roadRoute(config, [snapshot.station, ...stops]);
+        const returnGeometry = body.includeReturn === true
+          ? await providers.roadRoute(config, [stops.at(-1), snapshot.station]) : null;
+        const latestRevision = await pool.query("SELECT value FROM settings WHERE key = 'revision'");
+        ensure(latestRevision.rows[0].value === snapshot.revision,
+          'Die Stammdaten wurden geändert. Bitte neu berechnen.', 409);
+        ensure(await session(pool, request, config.encryptionKey), 'Bitte erneut anmelden.', 401);
+        return json(200, { geometry, returnGeometry, revision: snapshot.revision });
+      }
+
       if (method === 'POST' && pathname === '/api/plan') {
         await rateLimit(pool, `plan:${userSession.user_id}`, 10, 60);
         ensure(!calculating, 'Eine Berechnung läuft bereits. Bitte kurz warten.', 409);
