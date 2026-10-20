@@ -127,13 +127,21 @@ Prüfen:
 
 ## 5. Automatische Updates über Webhook
 
-Beim Plesk-Git-Repository **Zusätzliche Deployment-Aktionen** aktivieren:
+Einmalig unter **Websites & Domains → Git → Repository-Einstellungen → Zusätzliche Deployment-Aktionen aktivieren** den folgenden Befehl eintragen und speichern. Den Beispielpfad durch den eigenen Anwendungsstamm ersetzen:
 
 ```sh
 cd /var/www/vhosts/example.org/heimweg.example.org && /bin/sh scripts/deploy-plesk.sh
 ```
 
 Der Pfad muss zum Shellkontext des Abonnements passen; bei chroot kann stattdessen `cd heimweg.example.org` nötig sein. Das Skript installiert die Laufzeitabhängigkeiten aus dem Lockfile, lädt die .env, führt Migrationen aus und aktualisiert `tmp/restart.txt` für Passenger. Es nutzt standardmäßig `/opt/plesk/node/24/bin/node`; einen abweichenden Installationspfad mit `NODE_BIN` angeben.
+
+Das läuft danach bei **jeder Bereitstellung**, manuell oder per Webhook:
+
+1. `npm ci --omit=dev` installiert die im Lockfile festgelegten Laufzeitabhängigkeiten.
+2. `scripts/migrate.js` führt nur noch ausstehende Datenbankmigrationen aus.
+3. Erst bei Erfolg wird `tmp/restart.txt` aktualisiert; Passenger startet die App bei der nächsten Anfrage neu.
+
+Der gesamte Ablauf bricht beim ersten Fehler ab; das Protokoll nennt die aktuelle Phase. Bei einem Fehler wird kein Neustart angefordert. Bereits bereitgestellte Dateien werden dabei nicht automatisch zurückgerollt. Zum Prüfen einmal **Bereitstellen** ausführen, im Protokoll `Database migrations completed.` und `Deployment completed` prüfen und anschließend `/healthz` sowie Anmeldung testen. `migrate` muss bei späteren erfolgreichen Deployments nicht mehr manuell in der Node.js-Oberfläche gestartet werden.
 
 Die **von Plesk angezeigte Webhook-URL** in GitHub unter **Settings → Webhooks → Add webhook** eintragen:
 

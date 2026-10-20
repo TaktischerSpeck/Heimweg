@@ -25,6 +25,9 @@ test('route maps validate finite GeoJSON and fit real Mercator geometry without 
   assert.ok(Number.isFinite(fitView(Array(150000).fill(points[0]), 390, 300).zoom));
   assert.ok(tilePlacements(view.center, view.zoom, 600, 320).length <= 20);
   assert.equal(getMapTiles().external, true);
+  assert.equal(getMapTiles().autoLoad, false);
+  assert.equal(getMapTiles({ MAP_TILE_AUTO_LOAD: 'true' }).autoLoad, true);
+  assert.equal(getMapTiles({ MAP_TILE_AUTO_LOAD: 'false' }).autoLoad, false);
   assert.equal(getMapTiles({ MAP_TILE_MODE: 'disabled' }), null);
   assert.throws(() => getMapTiles({ MAP_TILE_MODE: 'self-hosted' }));
   assert.throws(() => getMapTiles({ MAP_TILE_URL: 'https://user:secret@tiles.example.org/{z}/{x}/{y}.png' }));

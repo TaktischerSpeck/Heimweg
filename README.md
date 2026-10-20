@@ -79,7 +79,7 @@ Danach die Domain aufrufen und mit dem Inhalt von `secrets/setup_token` ein Admi
 
 ## Karten pro Fahrzeug
 
-Jede Fahrzeugroute zeigt zusätzlich den Straßenverlauf mit nummerierten Stopps und optionaler Rückfahrt. [Einrichtung, OSRM-Proxy-Update und Hintergrundkarten](docs/route-maps.md). Der externe OpenStreetMap-Hintergrund wird erst nach ausdrücklichem Klick geladen; eigene Tiles oder ein neutraler Hintergrund sind ebenfalls möglich.
+Jede Fahrzeugroute zeigt zusätzlich den Straßenverlauf mit nummerierten Stopps und optionaler Rückfahrt. [Einrichtung, OSRM-Proxy-Update und Hintergrundkarten](docs/route-maps.md). Der externe OpenStreetMap-Hintergrund wird standardmäßig nach Klick geladen, mit `MAP_TILE_AUTO_LOAD=true` automatisch; eigene Tiles oder ein neutraler Hintergrund sind ebenfalls möglich.
 
 ## Kartendienste
 
