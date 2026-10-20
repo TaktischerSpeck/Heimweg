@@ -1,0 +1,5 @@
+# Use together with compose.yaml after building the regional routing data.
+services:
+  osrm:
+    volumes:
+      - ./osrm-regional-data:/data:ro

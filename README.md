@@ -21,6 +21,8 @@ Eine selbst gehostete Webanwendung für die Heimfahrten der Jugendfeuerwehr: Kin
 
 **OSRM in Docker hinter vorhandenem Reverse Proxy:** [LXC mit Docker und lokalem TLS einrichten](docs/osrm-lxc-docker.md). Mit Compose-Datei, internem CA-Zertifikat und geprüfter HTTPS-Verbindung vom äußeren Proxy.
 
+**Kleiner regionaler Datenbestand:** [Darmstadt-Dieburg und Darmstadt](docs/nominatim-regional.md), mit 16-Thread-Import und sparsamem Nominatim-Betrieb sowie regionalem OSRM-Neuaufbau.
+
 **Eigener Routing-LXC mit HTTPS und Passwortschutz:** [OSRM-LXC einrichten](docs/osrm-lxc.md). Die Node-App unterstützt getrennte Basic-Auth-Zugangsdaten für OSRM und optional Nominatim; Passwörter bleiben im Backend und erfordern HTTPS.
 
 - **Plesk mit GitHub-Webhook:** [Schritt-für-Schritt-Anleitung](docs/plesk.md)

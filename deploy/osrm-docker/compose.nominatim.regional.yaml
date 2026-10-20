@@ -1,0 +1,20 @@
+# Use together with compose.nominatim.yaml; keeps the old Hessen volume intact.
+services:
+  nominatim:
+    cpus: 2
+    mem_limit: 3g
+    environment:
+      PBF_URL: ""
+      PBF_PATH: /maps/region.osm.pbf
+      THREADS: "2"
+      GUNICORN_WORKERS: "2"
+      POSTGRES_SHARED_BUFFERS: 256MB
+      POSTGRES_MAINTENANCE_WORK_MEM: 128MB
+      POSTGRES_AUTOVACUUM_WORK_MEM: 128MB
+      POSTGRES_WORK_MEM: 8MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 1GB
+    volumes:
+      - nominatim-regional-data:/var/lib/postgresql/16/main
+      - ./geocoding-data:/maps:ro
+volumes:
+  nominatim-regional-data:

@@ -1,0 +1,14 @@
+# Temporary import profile for a host with 16 GiB RAM and 16 available cores.
+# Remove this override only after the import has finished successfully.
+services:
+  nominatim:
+    cpus: 16
+    mem_limit: 14g
+    shm_size: 2g
+    environment:
+      THREADS: "16"
+      POSTGRES_SHARED_BUFFERS: 2GB
+      POSTGRES_MAINTENANCE_WORK_MEM: 256MB
+      POSTGRES_AUTOVACUUM_WORK_MEM: 256MB
+      POSTGRES_WORK_MEM: 16MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 8GB

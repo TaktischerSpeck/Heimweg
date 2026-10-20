@@ -13,9 +13,11 @@ Der vorhandene äußere Reverse Proxy kann eine eigene Geocoding-Domain auf `htt
 
 Alle Domains und IPs sind Platzhalter. Es wird nichts auf deinem tatsächlichen LXC automatisch installiert.
 
+Für eine sparsame Installation im Raum Darmstadt-Dieburg zuerst die [regionale Einrichtung und Umstellung](nominatim-regional.md) verwenden. Sie ersetzt den Hessen-Import aus Abschnitt 3; TLS, Proxy und App-Konfiguration ab Abschnitt 4 gelten weiterhin.
+
 ## 1. Voraussetzungen
 
-Nominatim benötigt einen eigenen OSM-Datenimport und zusätzlichen RAM-/SSD-Speicher. Für beide Dienste gemeinsam zunächst etwa 12–16 GB RAM und mindestens 60 GB SSD als Planungswert für Hessen vorsehen und den Import überwachen; dies sind keine garantierten Mindestwerte. Ein kleinerer passender Ausschnitt benötigt weniger. Während des Imports kann die Adresssuche noch nicht benutzt werden.
+Nominatim benötigt einen eigenen OSM-Datenimport und zusätzlichen RAM-/SSD-Speicher. Für beide Dienste gemeinsam zunächst etwa 12–16 GB RAM und mindestens 60 GB SSD als Planungswert für Hessen vorsehen und den Import überwachen; dies sind keine garantierten Mindestwerte. Ein kleinerer passender Ausschnitt benötigt weniger; dafür gibt es die [regionale Vorlage](nominatim-regional.md) mit getrennten Import- und Betriebsprofilen. Während des Imports kann die Adresssuche noch nicht benutzt werden.
 
 Verwendet wird das Community-Image **mediagis/nominatim:5.3**, dessen dokumentierter PostgreSQL-Datenpfad `/var/lib/postgresql/16/main` ist. Nominatim verwendet seine eigene PostgreSQL-Datenbank, nicht Heimwegs MariaDB. Der Container darf seine Daten nicht in ein bestehendes OSRM-Verzeichnis schreiben.
 
