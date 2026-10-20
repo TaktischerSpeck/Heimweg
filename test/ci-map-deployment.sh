@@ -34,8 +34,8 @@ for config in (runtime, importing):
     assert volumes["/maps"]["read_only"] is True
     assert volumes["/maps"]["source"].endswith("/geocoding-data")
     assert config["ports"][0]["host_ip"] == "127.0.0.1"
-assert float(runtime["cpus"]) == 2 and runtime["mem_limit"] == 3 * 1024**3
-assert float(importing["cpus"]) == 16 and importing["mem_limit"] == 14 * 1024**3
+assert float(runtime["cpus"]) == 2 and int(runtime["mem_limit"]) == 3 * 1024**3
+assert float(importing["cpus"]) == 16 and int(importing["mem_limit"]) == 14 * 1024**3
 assert importing["environment"]["THREADS"] == "16"
 assert runtime["environment"]["POSTGRES_SHARED_BUFFERS"] == "256MB"
 assert importing["environment"]["POSTGRES_SHARED_BUFFERS"] == "2GB"
