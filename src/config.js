@@ -19,6 +19,29 @@ function providerCredentials(env, prefix, endpoint) {
   return { username, password };
 }
 
+
+export function getMapTiles(env = {}) {
+  const mode = env.MAP_TILE_MODE || 'external';
+  if (!['disabled', 'self-hosted', 'external'].includes(mode)) throw new Error('Invalid MAP_TILE_MODE.');
+  if (mode === 'disabled') return null;
+  const template = env.MAP_TILE_URL || (mode === 'external' ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png' : '');
+  if (!template || !['{z}', '{x}', '{y}'].every(key => template.includes(key))) {
+    throw new Error('MAP_TILE_URL must contain {z}, {x} and {y}.');
+  }
+  const url = new URL(template.replaceAll('{z}', '0').replaceAll('{x}', '0').replaceAll('{y}', '0'));
+  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash ||
+      /[\r\n]/.test(template) ||
+      /[{}]/.test(template.replaceAll('{z}', '').replaceAll('{x}', '').replaceAll('{y}', ''))) {
+    throw new Error('MAP_TILE_URL must be an HTTPS tile template without credentials or query strings.');
+  }
+  return {
+    url: template,
+    origin: url.origin,
+    attribution: (env.MAP_TILE_ATTRIBUTION || '© OpenStreetMap contributors').slice(0, 300),
+    external: mode === 'external',
+  };
+}
+
 export function getConfig(env = process.env) {
   const production = env.NODE_ENV === 'production';
   const origin = env.APP_ORIGIN || 'http://localhost:3000';
@@ -79,6 +102,7 @@ export function getConfig(env = process.env) {
   const ca = env.DB_SSL_CA_FILE ? readFileSync(env.DB_SSL_CA_FILE, 'utf8') : undefined;
   return {
     production,
+    mapTiles: getMapTiles(env),
     origin,
     encryptionKey,
     setupToken,

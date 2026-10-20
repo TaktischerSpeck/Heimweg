@@ -1293,3 +1293,38 @@ dialog::backdrop {
     box-shadow: none;
   }
 }
+
+/* Route maps use only local JavaScript; external raster tiles need explicit consent. */
+.route-map { margin: 0 22px 22px; min-width: 0; }
+.route-map-title { margin: 0 0 10px; font-size: 1rem; }
+.route-map-canvas { position: relative; width: 100%; height: 320px; overflow: hidden;
+  border: 1px solid #c7d8da; border-radius: 14px; background-color: #edf3ef;
+  background-image: linear-gradient(#dbe5df 1px, transparent 1px), linear-gradient(90deg, #dbe5df 1px, transparent 1px);
+  background-size: 32px 32px; touch-action: none; cursor: grab; isolation: isolate; }
+.route-map-canvas:active { cursor: grabbing; }
+.route-map-canvas:focus-visible { outline: 3px solid #155e63; outline-offset: 3px; }
+.route-map-tiles { position: absolute; inset: 0; pointer-events: none; }
+.route-map-tiles img { position: absolute; max-width: none; width: 256px; height: 256px; }
+.route-map-canvas > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.map-route-halo { stroke: #fff; stroke-width: 8; }
+.map-route-line { stroke: #087a83; stroke-width: 4.5; }
+.map-return-line { stroke: #b45309; stroke-width: 4; stroke-dasharray: 8 7; }
+.map-stop-marker circle { fill: #fff; stroke: #07616a; stroke-width: 2.5; }
+.map-station-marker circle { fill: #07616a; stroke: #fff; stroke-width: 2.5; }
+.map-stop-marker text, .map-station-marker text { font: 700 12px system-ui, sans-serif; fill: #064a50; }
+.map-station-marker text { fill: #fff; font-size: 16px; }
+.route-map-controls { position: absolute; top: 10px; left: 10px; display: flex; gap: 5px; }
+.route-map-controls button { min-width: 38px; min-height: 38px; padding: 5px 10px;
+  background: #fff; color: #064a50; box-shadow: 0 1px 5px #0002; }
+.route-map-attribution { position: absolute; right: 0; bottom: 0; max-width: 100%;
+  padding: 3px 6px; background: #fffffff0; font-size: 10px; color: #364a43; }
+.route-map-attribution a { color: inherit; }
+.route-map-legend, .route-map-note { margin: 8px 0 0; font-size: .78rem; color: #53675f; }
+.route-map-consent { margin-top: 12px; padding: 12px; border: 1px solid #d4e1db; border-radius: 10px; }
+.route-map-consent[hidden] { display: none; }
+.route-map-consent p { margin: 8px 0 0; }
+.route-map-error, .route-map-loading { padding: 16px; background: #f2f6f3; border-radius: 10px; font-size: .85rem; }
+@media (max-width: 600px) {
+  .route-map { margin: 0 14px 16px; }
+  .route-map-canvas { height: 300px; }
+}

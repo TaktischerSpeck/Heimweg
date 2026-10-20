@@ -99,7 +99,7 @@ server {
     # allow 192.0.2.10;
     # deny all;
 
-    location /table/v1/driving/ {
+    location ~ "^/(table|route)/v1/driving/" {
         limit_except GET { deny all; }
         proxy_pass http://127.0.0.1:5000;
         proxy_set_header Host localhost;
@@ -239,7 +239,7 @@ nginx -t
 systemctl reload nginx
 ```
 
-`htpasswd` fragt das Servicepasswort interaktiv ab. Bei weiteren Benutzern oder Passwortänderungen **ohne `-c`** arbeiten. Die Vorlage veröffentlicht nur die von Heimweg benötigte `/table/v1/driving/`-API; andere Pfade liefern 404. nginx entfernt den Authorization-Header vor OSRM.
+`htpasswd` fragt das Servicepasswort interaktiv ab. Bei weiteren Benutzern oder Passwortänderungen **ohne `-c`** arbeiten. Die Vorlage veröffentlicht `/table/v1/driving/` für Matrizen und `/route/v1/driving/` für Fahrzeugkarten; andere Pfade liefern 404. nginx entfernt den Authorization-Header vor OSRM.
 
 In der Proxmox-/LXC-Firewall TCP 443 nur für die interne Quell-IP des vorhandenen Reverse Proxy erlauben; administrativen SSH-Zugang separat erhalten. Alternativ die vorbereiteten `allow`/`deny`-Zeilen in `nginx-local.conf` aktivieren. Bei diesen IP-Regeln zählt die tatsächliche Proxy-/NAT-Quell-IP, nicht ein vom Client gelieferter Header. Keine Portweiterleitung von außen zum LXC nötig. HTTP/80 wird für dieses Setup nicht benötigt; einen frischen nginx-Default-VHost bei Bedarf deaktivieren.
 
@@ -303,6 +303,8 @@ OSRM_PASSWORD="dein-im-lxc-vergebenes-servicepasswort"
 Alternativ `OSRM_PASSWORD_FILE` verwenden, siehe [LXC-Anleitung ohne Docker](osrm-lxc.md). App neu starten. Weder `NODE_TLS_REJECT_UNAUTHORIZED=0` setzen noch das interne Zertifikat in der App konfigurieren: Die App spricht den äußeren Proxy mit öffentlichem Zertifikat an.
 
 OSRM liefert Straßenfahrzeiten, keine Adresssuche und keine Kartenkacheln. Kinder-/Standortkoordinaten manuell prüfen oder einen separaten Geocoder verwenden. Die optionale [Nominatim-Ergänzung](nominatim-lxc-docker.md) installiert die eigene Adresssuche als zusätzlichen Container mit HTTPS auf LXC-Port 4433.
+
+Karten je Fahrzeug: Bei bestehenden Installationen zusätzlich [die nginx-Pfadfreigabe für Routengeometrien aktualisieren](route-maps.md).
 
 ## Betrieb, Kartenupdates und Rückkehr zum alten Stand
 

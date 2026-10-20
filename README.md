@@ -12,7 +12,7 @@ Eine selbst gehostete Webanwendung für die Heimfahrten der Jugendfeuerwehr: Kin
 - Optimierung für bis zu **40 Kinder und 8 Fahrzeuge**. Jedes Kind wird genau einmal zugeordnet. Verfügbare Fahrzeuge dürfen ungenutzt bleiben.
 - Fahrzeugvarianten, optimierte Referenz, getrennte Zeitersparnis für Heimbringzeit und gesamte Fahrzeit, geordnete Stopplisten und Ankunftszeiten.
 - Optionale Ausstiegszeit und gesonderte Rückfahrt zur Feuerwehr.
-- AES-256-GCM für Namen, Adressen und Koordinaten; keine dauerhafte Routenhistorie, Browser-Telemetrie oder öffentlichen Kartenressourcen.
+- AES-256-GCM für Namen, Adressen und Koordinaten; keine dauerhafte Routenhistorie, Browser-Telemetrie. Externe Hintergrundkacheln werden nur nach ausdrücklichem Freigabeklick geladen.
 - PostgreSQL-/MariaDB-Migrationen, native Node-/Plesk-Installation, Docker Compose, Healthcheck, Backup-Werkzeug, automatisierte Backend-/Browserprüfungen und Sicherheitsprüfungen in GitHub Actions.
 
 **Nach der Installation sind keine Kinder und keine Fahrzeuge angelegt.** Die Daten in Tests sind ausschließlich synthetisch und werden vom Produktivserver nicht geladen.
@@ -74,6 +74,10 @@ Die App ist ausschließlich auf `127.0.0.1:3000` veröffentlicht, PostgreSQL erh
 Danach die Domain aufrufen und mit dem Inhalt von `secrets/setup_token` ein Administratorkonto anlegen. Das Passwort benötigt mindestens 12 Zeichen. Der Token wird nicht in eine URL eingetragen und ist nach erfolgreicher Einrichtung wirkungslos. Anschließend anmelden, Standort erfassen, Kinder und Fahrzeuge anlegen.
 
 **Vor der ersten echten Routenplanung müssen Kartendienste konfiguriert sein.** Ohne Routingdienst werden weder Luftlinienwerte noch Demo-Routen erzeugt.
+
+## Karten pro Fahrzeug
+
+Jede Fahrzeugroute zeigt zusätzlich den Straßenverlauf mit nummerierten Stopps und optionaler Rückfahrt. [Einrichtung, OSRM-Proxy-Update und Hintergrundkarten](docs/route-maps.md). Der externe OpenStreetMap-Hintergrund wird erst nach ausdrücklichem Klick geladen; eigene Tiles oder ein neutraler Hintergrund sind ebenfalls möglich.
 
 ## Kartendienste
 
@@ -146,7 +150,7 @@ Für lokale Entwicklung eine nicht versionierte `.env` mit `NODE_ENV=development
 
 Das Backend nutzt die Node-HTTP-API und PostgreSQL oder MariaDB. Die direkten Laufzeitabhängigkeiten sind `pg`, `mariadb`, `argon2` und `csv-parse`. Das Frontend benötigt keinen Build-Schritt und keine externen Fonts oder Skripte. Eine berechnete Planung liegt nur im Arbeitsspeicher der Anfrage und im angemeldeten Browser. Ein separater Worker übernimmt die Optimierung; der Webserver bleibt erreichbar.
 
-Der erste MVP enthält keine Live-Karte, Navigations-App-Übergabe, Echtzeit-Verkehrsdaten, Selbstregistrierung, Rollenverwaltung oder dauerhafte Planungshistorie.
+Der erste MVP enthält keine Live-Fahrzeugortung, Navigations-App-Übergabe, Echtzeit-Verkehrsdaten, Selbstregistrierung, Rollenverwaltung oder dauerhafte Planungshistorie.
 
 ## Automatisches Zusammenführen von Pull Requests
 

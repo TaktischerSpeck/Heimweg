@@ -26,3 +26,9 @@ Der Betreiber legt fest, wer das Konto nutzen darf, auf welcher Grundlage die Da
 Geokodierung überträgt eine Adresse, Straßenrouting überträgt die Koordinaten der ausgewählten Orte. Auch ohne Namen können diese Daten Rückschlüsse auf Wohnorte zulassen. Deshalb ist kein externer Anbieter voreingestellt. Eigene Dienste werden explizit konfiguriert; für externe Anbieter ist zusätzlich `ALLOW_EXTERNAL_LOCATION_DATA=true` erforderlich. Die Oberfläche zeigt den externen Betrieb an.
 
 Der Backend-Schutz verhindert keinen Zugriff durch Serveradministratoren, kompromittierte Hosts, gestohlene gültige Sitzungen oder ein entsperrtes Endgerät. Gerätezugang, Betriebssystem- und Containerupdates, ein enger Personenkreis und separat geschützte Schlüssel bleiben erforderlich.
+
+## Fahrzeugkarten
+
+Die authentifizierte Karten-API rekonstruiert Stopps anhand vorhandener IDs und lädt den Straßenverlauf über das Backend. Keine Providerzugangsdaten gelangen in Browserdaten. Geometrien werden nicht als Routenhistorie in der Datenbank gespeichert. Der Browser hält Karten nur für die aktuelle Planung im Arbeitsspeicher.
+
+Externe Hintergrundkacheln benötigen eine ausdrückliche Freigabe in der Oberfläche. Ohne Klick werden keine externen Kacheln geladen. Bei Freigabe erhält der Anbieter Browser-IP und Kartenausschnitte; keine Namen oder Adresslisten werden in diese Anfragen eingebaut. Die Freigabe wird nicht dauerhaft gespeichert und beim Abmelden gelöscht. Eigene Kacheln oder MAP_TILE_MODE=disabled vermeiden externe Tile-Anfragen. [Konfiguration](route-maps.md).
