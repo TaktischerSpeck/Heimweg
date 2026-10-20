@@ -58,7 +58,7 @@ test('setup token, one-time initialization, sessions, CSRF and logout', async (t
   assert.equal((await f.request('/api/logout', 'POST', {})).status, 200);
   assert.equal((await f.request('/api/data')).status, 401);
   await migrate(f.pool);
-  assert.equal((await f.pool.query('SELECT * FROM schema_migrations')).rowCount, 1);
+  assert.equal((await f.pool.query('SELECT * FROM schema_migrations')).rowCount, 2);
 });
 test('failed attempts 1 and 2, success resets counter, third failure permanently locks', async (t) => {
   const f = await fixture();

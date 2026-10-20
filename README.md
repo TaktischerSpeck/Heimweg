@@ -8,6 +8,7 @@ Eine selbst gehostete Webanwendung für die Heimfahrten der Jugendfeuerwehr: Kin
 - Verwaltung von Feuerwehrstandort, Kindern mit geprüften Adressen und Fahrzeugen mit individuellen Sitzplatzzahlen.
 - CSV-Import mit Vorschau und atomarer Übernahme sowie CSV-Export für Kinder/Fahrzeuge.
 - Mobile Tagesplanung mit expliziter Anwesenheit, 1 oder 2 Betreuern je Fahrzeug, sofortiger Kapazitätsprüfung und veralteten Ergebnissen nach Änderungen.
+- Persönliche Benutzerkonten mit einfacher [Administratorverwaltung](docs/benutzer.md): anlegen, Passwort zurücksetzen, sperren und entsperren.
 - Reale Fahrzeit- und Entfernungsmatrizen über OSRM; Adresssuche über Nominatim oder manuell geprüfte Koordinaten.
 - Optimierung für bis zu **40 Kinder und 8 Fahrzeuge**. Jedes Kind wird genau einmal zugeordnet. Verfügbare Fahrzeuge dürfen ungenutzt bleiben.
 - Fahrzeugvarianten, optimierte Referenz, getrennte Zeitersparnis für Heimbringzeit und gesamte Fahrzeit, geordnete Stopplisten und Ankunftszeiten.

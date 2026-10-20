@@ -42,7 +42,7 @@ export async function setup(pool, config, body) {
     );
     const result = await client.query('SELECT id FROM users LIMIT 1');
     ensure(!result.rowCount, 'Die Ersteinrichtung ist bereits abgeschlossen.', 409);
-    await client.query('INSERT INTO users(id, username, password_hash) VALUES ($1, $2, $3)', [
+    await client.query("INSERT INTO users(id, username, password_hash, role) VALUES ($1, $2, $3, 'admin')", [
       randomUUID(),
       username,
       hash,
@@ -94,7 +94,7 @@ export async function session(pool, request, key) {
     ?.slice(8);
   if (!raw || !/^[a-f\d]{64}$/.test(raw)) return null;
   const { rows } = await pool.query(
-    `SELECT sessions.*, users.username FROM sessions JOIN users ON users.id = sessions.user_id
+    `SELECT sessions.*, users.username, users.role FROM sessions JOIN users ON users.id = sessions.user_id
     WHERE token_hash = $1 AND expires_at > now() AND users.locked = false`,
     [digest(raw)],
   );

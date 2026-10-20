@@ -167,8 +167,35 @@ test('setup, login, mobile master data, planning, stale results and deletion', a
   expect(await readFile(await (await vehicleDownload).path(), 'utf8')).toContain(
     'Synthetic CSV Vehicle',
   );
+  await page.getByRole('button', { name: 'Benutzer', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Benutzer', exact: true })).toBeVisible();
+  await expect(page.getByRole('article').filter({ hasText: 'testadmin (du)' }).getByRole('button', { name: 'Sperren', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: '+ Benutzer anlegen', exact: true }).click();
+  await page.getByLabel('Benutzername', { exact: true }).fill('testcoach');
+  await page.getByLabel('Neues Passwort', { exact: true }).fill('synthetic-coach-password-123');
+  await page.getByLabel('Passwort wiederholen', { exact: true }).fill('synthetic-coach-password-123');
+  await page.getByRole('button', { name: 'Benutzer erstellen', exact: true }).click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  const coach = page.getByRole('article').filter({ hasText: 'testcoach' });
+  await expect(coach).toContainText('Benutzer · Aktiv');
+  await coach.getByRole('button', { name: 'Sperren', exact: true }).click();
+  await expect(coach).toContainText('Gesperrt');
+  await coach.getByRole('button', { name: 'Entsperren', exact: true }).click();
+  await expect(coach).toContainText('Aktiv');
+  await coach.getByRole('button', { name: 'Passwort zurücksetzen', exact: true }).click();
+  await page.getByLabel('Neues Passwort', { exact: true }).fill('synthetic-coach-new-password-123');
+  await page.getByLabel('Passwort wiederholen', { exact: true }).fill('synthetic-coach-new-password-123');
+  await page.getByRole('button', { name: 'Passwort speichern', exact: true }).click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.locator('.topbar').getByRole('button', { name: 'Abmelden' }).click();
   await expect(page.getByRole('heading', { name: 'Schön, dass du da bist.' })).toBeVisible();
   await expect(page.locator('.route-map-canvas')).toHaveCount(0);
+  await page.getByLabel('Benutzername', { exact: true }).fill('testcoach');
+  await page.getByLabel('Passwort', { exact: true }).fill('synthetic-coach-new-password-123');
+  await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Heute sicher nach Hause.' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Benutzer', exact: true })).toHaveCount(0);
+  await page.locator('.topbar').getByRole('button', { name: 'Abmelden' }).click();
   expect(errors).toEqual([]);
 });

@@ -117,13 +117,15 @@ Nach einem Versionswechsel zuerst `runtime` prüfen, dann **npm-Installation** e
 `scripts/migrate.js` funktioniert als Eingabe in diesem Dialog nicht. Über SSH lautet der Aufruf im Anwendungsordner dagegen `/opt/plesk/node/24/bin/node scripts/migrate.js`.
 
 
-Nach dem Neustart die HTTPS-Domain öffnen und mit dem Inhalt von `secrets/setup_token` das erste Administratorkonto anlegen. Bei übernommenen Schlüsselpfaden den dortigen Setup-Token verwenden. Anschließend Standort, Kinder und Fahrzeuge erfassen oder [CSV importieren](csv.md).
+Nach dem Neustart die HTTPS-Domain öffnen und mit dem Inhalt von `secrets/setup_token` das erste Administratorkonto anlegen. Bei übernommenen Schlüsselpfaden den dortigen Setup-Token verwenden. Anschließend Standort, Kinder und Fahrzeuge erfassen oder [CSV importieren](csv.md). Weitere Konten unter **Benutzer** anlegen; siehe [Benutzerverwaltung](benutzer.md).
 
 Prüfen:
 
 - `/healthz` und die Startseite funktionieren.
 - `/.env`, `/secrets/encryption_key`, `/src/config.js` und `/package.json` liefern **403 oder 404**, niemals Dateiinhalt.
 - Anmeldung und nach Einrichtung des Kartendiensts eine kleine Testplanung funktionieren.
+
+Bei einem Update auf die Benutzerverwaltung einmal `migrate` ausführen und die App neu starten. Bestehende Konten erhalten Administratorrechte, Passwörter und verschlüsselte Stammdaten bleiben erhalten. Ohne funktionierende zusätzliche Deployment-Aktionen weiterhin **npm-Installation → Skript migrate → App neu starten** verwenden.
 
 ## 5. Automatische Updates über Webhook
 

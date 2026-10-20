@@ -822,6 +822,16 @@ input[type='checkbox'] {
 .row-actions button {
   font-size: 12px;
 }
+.user-row {
+  flex-wrap: wrap;
+}
+.user-row .row-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.user-row strong {
+  overflow-wrap: anywhere;
+}
 .station-panel {
   max-width: 720px;
   padding: 26px;
