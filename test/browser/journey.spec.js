@@ -66,7 +66,17 @@ test('setup, login, mobile master data, planning, stale results and deletion', a
   await page.getByRole('checkbox', { name: /Testkind Beta/ }).check();
   await page.getByRole('checkbox', { name: /Testkind Gamma/ }).check();
   await page.getByRole('checkbox', { name: 'Test-MTF verfügbar' }).check();
-  await page.getByLabel('Betreuer für Test-MTF').selectOption('2');
+  const secondSupervisor = page.getByRole('button', { name: 'Zweiter Betreuer für Test-MTF', exact: true });
+  await expect(secondSupervisor).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.vehicle-visual svg')).toHaveCount(2);
+  await secondSupervisor.click();
+  await expect(secondSupervisor).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.vehicle-card').filter({ hasText: 'Test-MTF' })).toContainText('2 Kinderplätze');
+  await secondSupervisor.press('Space');
+  await expect(secondSupervisor).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.vehicle-card').filter({ hasText: 'Test-MTF' })).toContainText('3 Kinderplätze');
+  await secondSupervisor.press('Space');
+  await expect(secondSupervisor).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByText('Es fehlen noch 1 Kinderplätze.')).toBeVisible();
   await page.getByRole('checkbox', { name: 'Test-PKW verfügbar' }).check();
   await page.getByRole('button', { name: 'Heimfahrten berechnen' }).click();
