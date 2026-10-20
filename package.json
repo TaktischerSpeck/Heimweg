@@ -14,7 +14,9 @@
     "check": "node scripts/check.js",
     "secrets": "node scripts/secrets.js",
     "backup:encrypt": "node scripts/backup.js encrypt",
-    "backup:decrypt": "node scripts/backup.js decrypt"
+    "backup:decrypt": "node scripts/backup.js decrypt",
+    "migrate": "node scripts/migrate.js",
+    "runtime": "node -p \"JSON.stringify({node:process.version,execPath:process.execPath})\""
   },
   "dependencies": {
     "argon2": "0.45.1",
