@@ -109,7 +109,7 @@ function drawMap(host, route, station, data, tiles) {
       group.append(svg('text', { 'text-anchor': 'middle', dy: '.35em' }, marker.label));
       vector.append(group);
     });
-    const showTiles = tiles && (!tiles.external || externalTilesAccepted);
+    const showTiles = tiles && (!tiles.external || tiles.autoLoad || externalTilesAccepted);
     const wanted = new Set();
     if (showTiles) for (const tile of tilePlacements(view.center, view.zoom, width, height)) {
       const key = [tile.z, tile.x, tile.y].join('/');
@@ -165,7 +165,11 @@ function drawMap(host, route, station, data, tiles) {
   const legend = html('p', 'route-map-legend', '⌂ Feuerwehr · Zahlen = Reihenfolge der Stopps' +
     (returnPoints.length ? ' · gestrichelt = Rückfahrt' : ''));
   host.append(legend, note);
-  if (tiles?.external) {
+  if (tiles?.external && tiles.autoLoad) {
+    host.append(html('p', 'small muted route-map-provider-notice',
+      'Kartenhintergrund von ' + new URL(tiles.origin).hostname +
+      ' wird automatisch geladen. Dabei werden IP-Adresse und Kartenausschnitt übertragen.'));
+  } else if (tiles?.external) {
     const consent = html('div', 'route-map-consent');
     const button = html('button', '', 'Kartenhintergrund laden');
     button.type = 'button';

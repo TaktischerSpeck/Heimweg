@@ -46,6 +46,17 @@ Die Routengeometrie kommt über das Backend vom bereits konfigurierten Routingdi
 
 Standardmäßig wird ein **OpenStreetMap-Kartenhintergrund angeboten**, aber erst nach Klick auf „Kartenhintergrund laden“ angefragt. Die Oberfläche erklärt dabei, dass der externe Anbieter IP-Adresse und Kartenausschnitt erhält. Die Freigabe gilt bis zum Abmelden; ohne Freigabe bleiben Straßenverlauf und Stopps auf neutralem Hintergrund sichtbar. Namen, Adresslisten und Routengeometrien werden nicht in Kachel-URLs eingebaut.
 
+### Hintergrund automatisch laden
+
+In der **.env der Heimweg-App auf Plesk**, nicht in der LXC-Konfiguration:
+
+```dotenv
+MAP_TILE_MODE=external
+MAP_TILE_AUTO_LOAD=true
+```
+
+Nach dem Deployment dieser Funktion und einem App-Neustart lädt jede Fahrzeugkarte ihren Hintergrund ohne zusätzlichen Klick. Ein Hinweis auf den Anbieter und die Übertragung von IP-Adresse und Kartenausschnitt bleibt sichtbar. `MAP_TILE_AUTO_LOAD=false` (Standard) stellt die Freigabe per Klick wieder her. Diese Einstellung gilt für alle Benutzer der Installation und ist unabhängig von `ALLOW_EXTERNAL_LOCATION_DATA`, das Routing und Adresssuche steuert. Der Betreiber entscheidet über den Einsatz externer Kacheln und informiert die Nutzer entsprechend.
+
 Der Browser lädt nur sichtbare Kacheln mit seinem normalen HTTP-Cache und dem App-Origin als Referer. Es gibt keinen Offline-Download und kein Vorladen ganzer Gebiete. Die Attribution bleibt sichtbar. Die [OSM-Tile-Nutzungsbedingungen](https://operations.osmfoundation.org/policies/tiles/) beachten; der öffentliche Dienst bietet keine Verfügbarkeitsgarantie.
 
 Für einen eigenen HTTPS-Kachelserver in der App-.env:
@@ -56,7 +67,7 @@ MAP_TILE_URL=https://tiles.example.org/{z}/{x}/{y}.png
 MAP_TILE_ATTRIBUTION="© OpenStreetMap contributors"
 ```
 
-Der Server muss 256-Pixel-Rasterkacheln im XYZ-/Web-Mercator-Schema liefern. Keine Zugangsdaten oder API-Schlüssel in die URL einbauen. Eigene Tiles benötigen keinen externen Freigabeklick. Für andere externe Anbieter `MAP_TILE_MODE=external` und deren URL/Attribution setzen; der Klick bleibt erforderlich.
+Der Server muss 256-Pixel-Rasterkacheln im XYZ-/Web-Mercator-Schema liefern. Keine Zugangsdaten oder API-Schlüssel in die URL einbauen. Eigene Tiles benötigen keinen externen Freigabeklick. Für andere externe Anbieter `MAP_TILE_MODE=external` und deren URL/Attribution setzen; der Klick bleibt bei `MAP_TILE_AUTO_LOAD=false` erforderlich.
 
 Hintergrund vollständig deaktivieren:
 

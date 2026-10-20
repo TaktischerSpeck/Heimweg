@@ -39,6 +39,7 @@ export function getMapTiles(env = {}) {
     origin: url.origin,
     attribution: (env.MAP_TILE_ATTRIBUTION || '© OpenStreetMap contributors').slice(0, 300),
     external: mode === 'external',
+    autoLoad: env.MAP_TILE_AUTO_LOAD === 'true',
   };
 }
 
