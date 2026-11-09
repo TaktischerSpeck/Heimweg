@@ -21,7 +21,7 @@
   "dependencies": {
     "argon2": "0.45.1",
     "csv-parse": "7.0.3",
-    "mariadb": "3.5.4",
+    "mariadb": "3.5.5",
     "pg": "8.23.1"
   },
   "devDependencies": {
