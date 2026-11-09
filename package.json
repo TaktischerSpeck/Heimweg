@@ -19,7 +19,7 @@
     "runtime": "node -p \"JSON.stringify({node:process.version,execPath:process.execPath})\""
   },
   "dependencies": {
-    "argon2": "0.45.1",
+    "argon2": "0.45.2",
     "csv-parse": "7.0.3",
     "mariadb": "3.5.4",
     "pg": "8.23.1"
