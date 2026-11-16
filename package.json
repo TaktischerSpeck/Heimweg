@@ -27,6 +27,6 @@
   "devDependencies": {
     "@electric-sql/pglite": "0.5.15",
     "@playwright/test": "1.65.0",
-    "prettier": "3.9.10"
+    "prettier": "3.10.1"
   }
 }
